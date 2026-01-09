@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - '.github/workflows/*.yml'
-      - '!.github/workflows/test-all.yml'
   workflow_dispatch:
 
 permissions:
@@ -48,12 +47,22 @@ jobs:
             echo "Changed files:"
             echo "$CHANGED"
             
-            echo "docusaurus=$(echo "$CHANGED" | grep -q '\.github/workflows/docusaurus\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
-            echo "vitepress=$(echo "$CHANGED" | grep -q '\.github/workflows/vitepress\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
-            echo "mkdocs=$(echo "$CHANGED" | grep -q '\.github/workflows/mkdocs-material\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
-            echo "docsify=$(echo "$CHANGED" | grep -q '\.github/workflows/docsify\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
-            echo "starlight=$(echo "$CHANGED" | grep -q '\.github/workflows/starlight\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
-            echo "rspress=$(echo "$CHANGED" | grep -q '\.github/workflows/rspress\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+            # If test-all.yml changed, rebuild all
+            if echo "$CHANGED" | grep -q '\.github/workflows/test-all\.yml'; then
+              echo "docusaurus=true" >> $GITHUB_OUTPUT
+              echo "vitepress=true" >> $GITHUB_OUTPUT
+              echo "mkdocs=true" >> $GITHUB_OUTPUT
+              echo "docsify=true" >> $GITHUB_OUTPUT
+              echo "starlight=true" >> $GITHUB_OUTPUT
+              echo "rspress=true" >> $GITHUB_OUTPUT
+            else
+              echo "docusaurus=$(echo "$CHANGED" | grep -q '\.github/workflows/docusaurus\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+              echo "vitepress=$(echo "$CHANGED" | grep -q '\.github/workflows/vitepress\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+              echo "mkdocs=$(echo "$CHANGED" | grep -q '\.github/workflows/mkdocs-material\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+              echo "docsify=$(echo "$CHANGED" | grep -q '\.github/workflows/docsify\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+              echo "starlight=$(echo "$CHANGED" | grep -q '\.github/workflows/starlight\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+              echo "rspress=$(echo "$CHANGED" | grep -q '\.github/workflows/rspress\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+            fi
           fi
 
   build-docusaurus:
