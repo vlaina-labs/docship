@@ -62,22 +62,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Build with test content
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      - name: Cache Docusaurus
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: docusaurus-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: docusaurus-${{ runner.os }}-
+      - name: Build
         run: |
           cp -r test-content/* .
-          
           npx create-docusaurus@latest temp-site classic --javascript
           cd temp-site
           rm -rf blog docs src/pages
           mkdir -p content
           cp -r ../docs/* content/ 2>/dev/null || true
           cp -r ../tutorials content/ 2>/dev/null || true
-          
           cat > docusaurus.config.js << 'EOF'
           import {themes as prismThemes} from 'prism-react-renderer';
           export default {
@@ -91,17 +97,14 @@ jobs:
             themeConfig: { navbar: { title: 'Docusaurus Test' }, prism: { theme: prismThemes.github } },
           };
           EOF
-          
           TMPFILE=$(mktemp)
           printf '%s\n' '---' 'slug: /' '---' '' > "$TMPFILE"
           cat content/index.md >> "$TMPFILE"
           mv "$TMPFILE" content/index.md
-          
           npm install
           npm run build
           mkdir -p ../output/docusaurus
           cp -r build/* ../output/docusaurus/
-
       - uses: actions/upload-artifact@v4
         with:
           name: docusaurus-build
@@ -113,19 +116,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Build with test content
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: vitepress-${{ runner.os }}
+      - name: Build
         run: |
           cp -r test-content/* .
-          
           npm init -y
           npm install vitepress --save-dev
           mkdir -p .vitepress
-          
           cat > .vitepress/config.js << 'EOF'
           export default {
             title: 'VitePress Test',
@@ -135,11 +139,9 @@ jobs:
             themeConfig: { siteTitle: 'VitePress Test' }
           }
           EOF
-          
           npx vitepress build
           mkdir -p output/vitepress
           cp -r .vitepress/dist/* output/vitepress/
-
       - uses: actions/upload-artifact@v4
         with:
           name: vitepress-build
@@ -151,13 +153,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Build with test content
+      - name: Build
         run: |
           mkdir -p output/docsify
           cp -r test-content/docs/* output/docsify/
           cp -r test-content/tutorials output/docsify/
-          
           cat > output/docsify/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
@@ -175,16 +175,13 @@ jobs:
           </body>
           </html>
           EOF
-          
           echo "* [Home](/)" > output/docsify/_sidebar.md
           find output/docsify -name "*.md" ! -name "_sidebar.md" -type f | sort | while read f; do
             name=$(basename "$f" .md)
             path="${f#output/docsify/}"
             echo "* [${name}](/${path})" >> output/docsify/_sidebar.md
           done
-          
           touch output/docsify/.nojekyll
-
       - uses: actions/upload-artifact@v4
         with:
           name: docsify-build
@@ -196,20 +193,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Build with test content
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: starlight-${{ runner.os }}
+      - name: Build
         run: |
           npm create astro@latest temp-site -- --template starlight --no-install --no-git -y
           cd temp-site
-          
           rm -rf src/content/docs/*
           cp -r ../test-content/docs/* src/content/docs/
           cp -r ../test-content/tutorials src/content/docs/
-          
           find src/content/docs -name "*.md" -type f | while read f; do
             if ! head -3 "$f" | grep -q "^---"; then
               FILENAME=$(basename "$f" .md)
@@ -218,9 +216,7 @@ jobs:
               printf '%s\n' '---' "title: ${TITLE}" '---' '' "$TEMP_CONTENT" > "$f"
             fi
           done
-          
           mv src/content/docs/index.md src/content/docs/index.mdx 2>/dev/null || true
-          
           cat > astro.config.mjs << 'EOF'
           import { defineConfig } from 'astro/config';
           import starlight from '@astrojs/starlight';
@@ -240,12 +236,10 @@ jobs:
             ],
           });
           EOF
-          
           npm install
           npm run build
           mkdir -p ../output/starlight
           cp -r dist/* ../output/starlight/
-
       - uses: actions/upload-artifact@v4
         with:
           name: starlight-build
@@ -257,17 +251,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Build with test content
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: rspress-${{ runner.os }}
+      - name: Build
         run: |
           mkdir -p temp-site/docs
           cp -r test-content/docs/* temp-site/docs/
           cp -r test-content/tutorials temp-site/docs/
-          
           find temp-site/docs -name "*.md" -type f | while read f; do
             if ! head -3 "$f" | grep -q "^---"; then
               FILENAME=$(basename "$f" .md)
@@ -276,12 +272,10 @@ jobs:
               printf '%s\n' '---' "title: ${TITLE}" '---' '' "$TEMP_CONTENT" > "$f"
             fi
           done
-          
           cd temp-site
           cat > package.json << 'EOF'
           { "name": "test", "scripts": { "build": "rspress build" }, "dependencies": { "rspress": "^1.0.0" } }
           EOF
-          
           cat > rspress.config.ts << 'EOF'
           import { defineConfig } from 'rspress/config';
           export default defineConfig({
@@ -300,12 +294,10 @@ jobs:
             },
           });
           EOF
-          
           npm install
           npm run build
           mkdir -p ../output/rspress
           cp -r doc_build/* ../output/rspress/
-
       - uses: actions/upload-artifact@v4
         with:
           name: rspress-build
@@ -317,143 +309,92 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-
-      - name: Build with test content
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: mkdocs-${{ runner.os }}
+      - name: Build
         run: |
           pip install mkdocs-material
-          
           cp -r test-content/docs .
           cp -r test-content/tutorials docs/
-          
           cat > mkdocs.yml << 'EOF'
           site_name: MkDocs Test
           site_url: https://nekotick.github.io/docship/mkdocs/
           theme:
             name: material
           EOF
-          
           mkdocs build -d output/mkdocs
-
       - uses: actions/upload-artifact@v4
         with:
           name: mkdocs-build
           path: output/mkdocs
 
-  merge-and-deploy:
+  deploy:
     needs: [build-docusaurus, build-vitepress, build-docsify, build-starlight, build-rspress, build-mkdocs]
     if: always() && (needs.build-docusaurus.result == 'success' || needs.build-vitepress.result == 'success' || needs.build-docsify.result == 'success' || needs.build-starlight.result == 'success' || needs.build-rspress.result == 'success' || needs.build-mkdocs.result == 'success')
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download existing pages (if any)
+      - name: Download existing pages
         uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: existing-pages
         continue-on-error: true
 
-      - name: Create output directory
+      - name: Prepare output
         run: |
           mkdir -p final-output
-          if [ -d "existing-pages" ]; then
-            cp -r existing-pages/* final-output/ 2>/dev/null || true
-            rm -rf final-output/.git
-          fi
+          [ -d "existing-pages" ] && cp -r existing-pages/* final-output/ 2>/dev/null || true
+          rm -rf final-output/.git
 
-      - name: Download Docusaurus build
-        if: needs.build-docusaurus.result == 'success'
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: docusaurus-build
-          path: final-output/docusaurus
+          pattern: '*-build'
+          path: artifacts
+        continue-on-error: true
 
-      - name: Download VitePress build
-        if: needs.build-vitepress.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: vitepress-build
-          path: final-output/vitepress
+      - name: Merge artifacts
+        run: |
+          for dir in artifacts/*-build; do
+            [ -d "$dir" ] && cp -r "$dir" "final-output/$(basename "$dir" -build)/"
+          done
 
-      - name: Download Docsify build
-        if: needs.build-docsify.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: docsify-build
-          path: final-output/docsify
-
-      - name: Download Starlight build
-        if: needs.build-starlight.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: starlight-build
-          path: final-output/starlight
-
-      - name: Download Rspress build
-        if: needs.build-rspress.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: rspress-build
-          path: final-output/rspress
-
-      - name: Download MkDocs build
-        if: needs.build-mkdocs.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: mkdocs-build
-          path: final-output/mkdocs
-
-      - name: Create index page
+      - name: Create index
         run: |
           cat > final-output/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>Docship Theme Tests</title>
-            <style>
-              body { font-family: system-ui; max-width: 800px; margin: 50px auto; padding: 20px; }
-              h1 { color: #333; }
-              ul { list-style: none; padding: 0; }
-              li { margin: 10px 0; }
-              a { color: #0066cc; text-decoration: none; padding: 10px 20px; border: 1px solid #ddd; border-radius: 5px; display: inline-block; }
-              a:hover { background: #f5f5f5; }
-            </style>
+          <head><meta charset="UTF-8"><title>Docship Tests</title>
+          <style>body{font-family:system-ui;max-width:800px;margin:50px auto;padding:20px}ul{list-style:none;padding:0}li{margin:10px 0}a{color:#0066cc;text-decoration:none;padding:10px 20px;border:1px solid #ddd;border-radius:5px;display:inline-block}a:hover{background:#f5f5f5}</style>
           </head>
           <body>
-            <h1>🚀 Docship Theme Tests</h1>
-            <p>Click to preview each documentation theme:</p>
-            <ul>
-              <li><a href="./docusaurus/">📘 Docusaurus</a></li>
-              <li><a href="./vitepress/">📗 VitePress</a></li>
-              <li><a href="./docsify/">📙 Docsify</a></li>
-              <li><a href="./starlight/">⭐ Starlight</a></li>
-              <li><a href="./rspress/">📕 Rspress</a></li>
-              <li><a href="./mkdocs/">📓 MkDocs Material</a></li>
-            </ul>
-          </body>
-          </html>
+          <h1>🚀 Docship Theme Tests</h1>
+          <ul>
+            <li><a href="./docusaurus/">📘 Docusaurus</a></li>
+            <li><a href="./vitepress/">📗 VitePress</a></li>
+            <li><a href="./docsify/">📙 Docsify</a></li>
+            <li><a href="./starlight/">⭐ Starlight</a></li>
+            <li><a href="./rspress/">📕 Rspress</a></li>
+            <li><a href="./mkdocs/">📓 MkDocs Material</a></li>
+          </ul>
+          </body></html>
           EOF
-          
           touch final-output/.nojekyll
 
-      - name: Setup Pages
+      - name: Deploy
         uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: final-output
-
-  deploy:
-    needs: merge-and-deploy
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
