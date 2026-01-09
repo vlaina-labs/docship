@@ -67,9 +67,10 @@ jobs:
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
+          FULL_REPO="${GITHUB_REPOSITORY}"
           
-          # Update next.config.mjs for static export
-          cat > next.config.mjs << 'CONFIGEOF'
+          # Update next.config.mjs for static export with basePath
+          cat > next.config.mjs << CONFIGEOF
           import { createMDX } from 'fumadocs-mdx/next';
 
           const withMDX = createMDX();
@@ -77,7 +78,7 @@ jobs:
           /** @type {import('next').NextConfig} */
           const config = {
             output: 'export',
-            basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+            basePath: '/${REPO_NAME}',
             images: {
               unoptimized: true,
             },
@@ -86,6 +87,68 @@ jobs:
 
           export default withMDX(config);
           CONFIGEOF
+
+      - name: Configure branding
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          FULL_REPO="${GITHUB_REPOSITORY}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          
+          # Find and update layout.config.tsx
+          LAYOUT_CONFIG=""
+          if [ -f "app/layout.config.tsx" ]; then
+            LAYOUT_CONFIG="app/layout.config.tsx"
+          elif [ -f "src/app/layout.config.tsx" ]; then
+            LAYOUT_CONFIG="src/app/layout.config.tsx"
+          fi
+          
+          if [ -n "$LAYOUT_CONFIG" ]; then
+            cat > "$LAYOUT_CONFIG" << LAYOUTEOF
+          import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+
+          export const baseOptions: BaseLayoutProps = {
+            githubUrl: 'https://github.com/${FULL_REPO}',
+            nav: {
+              title: (
+                <>
+                  <img
+                    src="${AVATAR_URL}"
+                    alt="Logo"
+                    style={{ width: 24, height: 24, borderRadius: '50%' }}
+                  />
+                  <span>${OWNER}/${REPO_NAME}</span>
+                </>
+              ),
+            },
+            links: [
+              {
+                text: 'GitHub',
+                url: 'https://github.com/${FULL_REPO}',
+              },
+            ],
+          };
+          LAYOUTEOF
+          fi
+          
+          # Update root layout.tsx for page title and favicon
+          ROOT_LAYOUT=""
+          if [ -f "app/layout.tsx" ]; then
+            ROOT_LAYOUT="app/layout.tsx"
+          elif [ -f "src/app/layout.tsx" ]; then
+            ROOT_LAYOUT="src/app/layout.tsx"
+          fi
+          
+          if [ -n "$ROOT_LAYOUT" ]; then
+            # Update metadata in layout.tsx
+            sed -i "s|title: '.*'|title: '${OWNER}/${REPO_NAME}'|g" "$ROOT_LAYOUT" 2>/dev/null || true
+            sed -i "s|description: '.*'|description: 'Documentation for ${OWNER}/${REPO_NAME}'|g" "$ROOT_LAYOUT" 2>/dev/null || true
+            
+            # Add favicon if not present
+            if ! grep -q "icons:" "$ROOT_LAYOUT"; then
+              sed -i "s|export const metadata|export const metadata: Metadata = {\n  icons: {\n    icon: '${AVATAR_URL}',\n  },\n};\n\nexport const _metadata|g" "$ROOT_LAYOUT" 2>/dev/null || true
+            fi
+          fi
 
       - name: Copy user content
         run: |
@@ -144,31 +207,7 @@ jobs:
             fi
           done
 
-      - name: Update source configuration
-        run: |
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          OWNER="${GITHUB_REPOSITORY_OWNER}"
-          
-          # Update source.ts if it exists
-          if [ -f "lib/source.ts" ] || [ -f "src/lib/source.ts" ]; then
-            SOURCE_FILE=$([ -f "lib/source.ts" ] && echo "lib/source.ts" || echo "src/lib/source.ts")
-          fi
-          
-          # Update app layout with custom branding
-          LAYOUT_FILE=""
-          if [ -f "app/layout.tsx" ]; then
-            LAYOUT_FILE="app/layout.tsx"
-          elif [ -f "src/app/layout.tsx" ]; then
-            LAYOUT_FILE="src/app/layout.tsx"
-          fi
-          
-          if [ -n "$LAYOUT_FILE" ]; then
-            sed -i "s|<title>.*</title>|<title>${OWNER}/${REPO_NAME}</title>|g" "$LAYOUT_FILE" 2>/dev/null || true
-          fi
-
       - name: Install dependencies and Build
-        env:
-          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
         run: |
           npm install
           npm run build
