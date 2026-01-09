@@ -342,19 +342,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download existing pages
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: existing-pages
-        continue-on-error: true
-
-      - name: Prepare output
-        run: |
-          mkdir -p final-output
-          [ -d "existing-pages" ] && cp -r existing-pages/* final-output/ 2>/dev/null || true
-          rm -rf final-output/.git
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -364,6 +351,7 @@ jobs:
 
       - name: Merge artifacts
         run: |
+          mkdir -p final-output
           for dir in artifacts/*-build; do
             [ -d "$dir" ] && cp -r "$dir" "final-output/$(basename "$dir" -build)/"
           done
