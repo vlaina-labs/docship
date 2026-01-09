@@ -1,0 +1,459 @@
+name: Test All Themes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/*.yml'
+      - '!.github/workflows/test-all.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docusaurus: ${{ steps.changes.outputs.docusaurus }}
+      vitepress: ${{ steps.changes.outputs.vitepress }}
+      mkdocs: ${{ steps.changes.outputs.mkdocs }}
+      docsify: ${{ steps.changes.outputs.docsify }}
+      starlight: ${{ steps.changes.outputs.starlight }}
+      rspress: ${{ steps.changes.outputs.rspress }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed workflows
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "docusaurus=true" >> $GITHUB_OUTPUT
+            echo "vitepress=true" >> $GITHUB_OUTPUT
+            echo "mkdocs=true" >> $GITHUB_OUTPUT
+            echo "docsify=true" >> $GITHUB_OUTPUT
+            echo "starlight=true" >> $GITHUB_OUTPUT
+            echo "rspress=true" >> $GITHUB_OUTPUT
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD)
+            echo "Changed files:"
+            echo "$CHANGED"
+            
+            echo "docusaurus=$(echo "$CHANGED" | grep -q '\.github/workflows/docusaurus\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "vitepress=$(echo "$CHANGED" | grep -q '\.github/workflows/vitepress\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "mkdocs=$(echo "$CHANGED" | grep -q '\.github/workflows/mkdocs-material\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "docsify=$(echo "$CHANGED" | grep -q '\.github/workflows/docsify\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "starlight=$(echo "$CHANGED" | grep -q '\.github/workflows/starlight\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "rspress=$(echo "$CHANGED" | grep -q '\.github/workflows/rspress\.yml' && echo true || echo false)" >> $GITHUB_OUTPUT
+          fi
+
+  build-docusaurus:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.docusaurus == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build with test content
+        run: |
+          cp -r test-content/* .
+          
+          npx create-docusaurus@latest temp-site classic --javascript
+          cd temp-site
+          rm -rf blog docs src/pages
+          mkdir -p content
+          cp -r ../docs/* content/ 2>/dev/null || true
+          cp -r ../tutorials content/ 2>/dev/null || true
+          
+          cat > docusaurus.config.js << 'EOF'
+          import {themes as prismThemes} from 'prism-react-renderer';
+          export default {
+            title: 'Docship Test',
+            favicon: 'img/favicon.ico',
+            url: 'https://nekotick.github.io',
+            baseUrl: '/docship/docusaurus/',
+            onBrokenLinks: 'ignore',
+            markdown: { format: 'md' },
+            presets: [['classic', { docs: { routeBasePath: '/', path: 'content' }, blog: false }]],
+            themeConfig: { navbar: { title: 'Docusaurus Test' }, prism: { theme: prismThemes.github } },
+          };
+          EOF
+          
+          TMPFILE=$(mktemp)
+          printf '%s\n' '---' 'slug: /' '---' '' > "$TMPFILE"
+          cat content/index.md >> "$TMPFILE"
+          mv "$TMPFILE" content/index.md
+          
+          npm install
+          npm run build
+          mkdir -p ../output/docusaurus
+          cp -r build/* ../output/docusaurus/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docusaurus-build
+          path: output/docusaurus
+
+  build-vitepress:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.vitepress == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build with test content
+        run: |
+          cp -r test-content/* .
+          
+          npm init -y
+          npm install vitepress --save-dev
+          mkdir -p .vitepress
+          
+          cat > .vitepress/config.js << 'EOF'
+          export default {
+            title: 'VitePress Test',
+            base: '/docship/vitepress/',
+            srcDir: 'docs',
+            ignoreDeadLinks: true,
+            themeConfig: { siteTitle: 'VitePress Test' }
+          }
+          EOF
+          
+          npx vitepress build
+          mkdir -p output/vitepress
+          cp -r .vitepress/dist/* output/vitepress/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vitepress-build
+          path: output/vitepress
+
+  build-docsify:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.docsify == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build with test content
+        run: |
+          mkdir -p output/docsify
+          cp -r test-content/docs/* output/docsify/
+          cp -r test-content/tutorials output/docsify/
+          
+          cat > output/docsify/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Docsify Test</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+          </head>
+          <body>
+            <div id="app"></div>
+            <script>
+              window.$docsify = { name: 'Docsify Test', loadSidebar: true, subMaxLevel: 3 }
+            </script>
+            <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
+          </body>
+          </html>
+          EOF
+          
+          echo "* [Home](/)" > output/docsify/_sidebar.md
+          find output/docsify -name "*.md" ! -name "_sidebar.md" -type f | sort | while read f; do
+            name=$(basename "$f" .md)
+            path="${f#output/docsify/}"
+            echo "* [${name}](/${path})" >> output/docsify/_sidebar.md
+          done
+          
+          touch output/docsify/.nojekyll
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docsify-build
+          path: output/docsify
+
+  build-starlight:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.starlight == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build with test content
+        run: |
+          npm create astro@latest temp-site -- --template starlight --no-install --no-git -y
+          cd temp-site
+          
+          rm -rf src/content/docs/*
+          cp -r ../test-content/docs/* src/content/docs/
+          cp -r ../test-content/tutorials src/content/docs/
+          
+          find src/content/docs -name "*.md" -type f | while read f; do
+            if ! head -3 "$f" | grep -q "^---"; then
+              FILENAME=$(basename "$f" .md)
+              TITLE=$(echo "$FILENAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+              TEMP_CONTENT=$(cat "$f")
+              printf '%s\n' '---' "title: ${TITLE}" '---' '' "$TEMP_CONTENT" > "$f"
+            fi
+          done
+          
+          mv src/content/docs/index.md src/content/docs/index.mdx 2>/dev/null || true
+          
+          cat > astro.config.mjs << 'EOF'
+          import { defineConfig } from 'astro/config';
+          import starlight from '@astrojs/starlight';
+          export default defineConfig({
+            site: 'https://nekotick.github.io',
+            base: '/docship/starlight',
+            integrations: [
+              starlight({
+                title: 'Starlight Test',
+                social: [],
+                sidebar: [
+                  { slug: '' },
+                  { label: 'Tutorials', autogenerate: { directory: 'tutorials' } },
+                ],
+                credits: false,
+              }),
+            ],
+          });
+          EOF
+          
+          npm install
+          npm run build
+          mkdir -p ../output/starlight
+          cp -r dist/* ../output/starlight/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: starlight-build
+          path: output/starlight
+
+  build-rspress:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.rspress == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build with test content
+        run: |
+          mkdir -p temp-site/docs
+          cp -r test-content/docs/* temp-site/docs/
+          cp -r test-content/tutorials temp-site/docs/
+          
+          find temp-site/docs -name "*.md" -type f | while read f; do
+            if ! head -3 "$f" | grep -q "^---"; then
+              FILENAME=$(basename "$f" .md)
+              TITLE=$(echo "$FILENAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+              TEMP_CONTENT=$(cat "$f")
+              printf '%s\n' '---' "title: ${TITLE}" '---' '' "$TEMP_CONTENT" > "$f"
+            fi
+          done
+          
+          cd temp-site
+          cat > package.json << 'EOF'
+          { "name": "test", "scripts": { "build": "rspress build" }, "dependencies": { "rspress": "^1.0.0" } }
+          EOF
+          
+          cat > rspress.config.ts << 'EOF'
+          import { defineConfig } from 'rspress/config';
+          export default defineConfig({
+            root: 'docs',
+            base: '/docship/rspress/',
+            title: 'Rspress Test',
+            themeConfig: {
+              sidebar: {
+                '/': [
+                  { text: 'Tutorials', items: [
+                    { text: 'Getting Started', link: '/tutorials/getting-started' },
+                    { text: 'Advanced', link: '/tutorials/advanced' },
+                  ]},
+                ],
+              },
+            },
+          });
+          EOF
+          
+          npm install
+          npm run build
+          mkdir -p ../output/rspress
+          cp -r doc_build/* ../output/rspress/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rspress-build
+          path: output/rspress
+
+  build-mkdocs:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mkdocs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Build with test content
+        run: |
+          pip install mkdocs-material
+          
+          cp -r test-content/docs .
+          cp -r test-content/tutorials docs/
+          
+          cat > mkdocs.yml << 'EOF'
+          site_name: MkDocs Test
+          site_url: https://nekotick.github.io/docship/mkdocs/
+          theme:
+            name: material
+          EOF
+          
+          mkdocs build -d output/mkdocs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mkdocs-build
+          path: output/mkdocs
+
+  merge-and-deploy:
+    needs: [build-docusaurus, build-vitepress, build-docsify, build-starlight, build-rspress, build-mkdocs]
+    if: always() && (needs.build-docusaurus.result == 'success' || needs.build-vitepress.result == 'success' || needs.build-docsify.result == 'success' || needs.build-starlight.result == 'success' || needs.build-rspress.result == 'success' || needs.build-mkdocs.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download existing pages (if any)
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: existing-pages
+        continue-on-error: true
+
+      - name: Create output directory
+        run: |
+          mkdir -p final-output
+          if [ -d "existing-pages" ]; then
+            cp -r existing-pages/* final-output/ 2>/dev/null || true
+            rm -rf final-output/.git
+          fi
+
+      - name: Download Docusaurus build
+        if: needs.build-docusaurus.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: docusaurus-build
+          path: final-output/docusaurus
+
+      - name: Download VitePress build
+        if: needs.build-vitepress.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: vitepress-build
+          path: final-output/vitepress
+
+      - name: Download Docsify build
+        if: needs.build-docsify.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: docsify-build
+          path: final-output/docsify
+
+      - name: Download Starlight build
+        if: needs.build-starlight.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: starlight-build
+          path: final-output/starlight
+
+      - name: Download Rspress build
+        if: needs.build-rspress.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: rspress-build
+          path: final-output/rspress
+
+      - name: Download MkDocs build
+        if: needs.build-mkdocs.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: mkdocs-build
+          path: final-output/mkdocs
+
+      - name: Create index page
+        run: |
+          cat > final-output/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Docship Theme Tests</title>
+            <style>
+              body { font-family: system-ui; max-width: 800px; margin: 50px auto; padding: 20px; }
+              h1 { color: #333; }
+              ul { list-style: none; padding: 0; }
+              li { margin: 10px 0; }
+              a { color: #0066cc; text-decoration: none; padding: 10px 20px; border: 1px solid #ddd; border-radius: 5px; display: inline-block; }
+              a:hover { background: #f5f5f5; }
+            </style>
+          </head>
+          <body>
+            <h1>🚀 Docship Theme Tests</h1>
+            <p>Click to preview each documentation theme:</p>
+            <ul>
+              <li><a href="./docusaurus/">📘 Docusaurus</a></li>
+              <li><a href="./vitepress/">📗 VitePress</a></li>
+              <li><a href="./docsify/">📙 Docsify</a></li>
+              <li><a href="./starlight/">⭐ Starlight</a></li>
+              <li><a href="./rspress/">📕 Rspress</a></li>
+              <li><a href="./mkdocs/">📓 MkDocs Material</a></li>
+            </ul>
+          </body>
+          </html>
+          EOF
+          
+          touch final-output/.nojekyll
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: final-output
+
+  deploy:
+    needs: merge-and-deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
