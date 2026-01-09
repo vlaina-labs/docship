@@ -66,10 +66,8 @@ jobs:
       - name: Configure for GitHub Pages
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          OWNER="${GITHUB_REPOSITORY_OWNER}"
-          FULL_REPO="${GITHUB_REPOSITORY}"
           
-          # Update next.config.mjs for static export with basePath
+          # Update next.config.mjs with basePath for GitHub Pages
           cat > next.config.mjs << CONFIGEOF
           import { createMDX } from 'fumadocs-mdx/next';
 
@@ -79,9 +77,6 @@ jobs:
           const config = {
             output: 'export',
             basePath: '/${REPO_NAME}',
-            images: {
-              unoptimized: true,
-            },
             reactStrictMode: true,
           };
 
@@ -95,113 +90,170 @@ jobs:
           FULL_REPO="${GITHUB_REPOSITORY}"
           AVATAR_URL="https://github.com/${OWNER}.png"
           
-          # Find and update layout.config.tsx
-          LAYOUT_CONFIG=""
-          if [ -f "app/layout.config.tsx" ]; then
-            LAYOUT_CONFIG="app/layout.config.tsx"
-          elif [ -f "src/app/layout.config.tsx" ]; then
-            LAYOUT_CONFIG="src/app/layout.config.tsx"
-          fi
-          
-          if [ -n "$LAYOUT_CONFIG" ]; then
-            cat > "$LAYOUT_CONFIG" << LAYOUTEOF
+          # Update lib/layout.shared.tsx with custom branding
+          cat > lib/layout.shared.tsx << 'LAYOUTEOF'
           import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 
-          export const baseOptions: BaseLayoutProps = {
-            githubUrl: 'https://github.com/${FULL_REPO}',
-            nav: {
-              title: (
-                <>
-                  <img
-                    src="${AVATAR_URL}"
-                    alt="Logo"
-                    style={{ width: 24, height: 24, borderRadius: '50%' }}
-                  />
-                  <span>${OWNER}/${REPO_NAME}</span>
-                </>
-              ),
-            },
-            links: [
-              {
-                text: 'GitHub',
-                url: 'https://github.com/${FULL_REPO}',
+          export function baseOptions(): BaseLayoutProps {
+            return {
+              githubUrl: 'GITHUB_URL_PLACEHOLDER',
+              nav: {
+                title: (
+                  <>
+                    <img
+                      src="AVATAR_URL_PLACEHOLDER"
+                      alt="Logo"
+                      width={24}
+                      height={24}
+                      style={{ borderRadius: '50%' }}
+                    />
+                    <span style={{ marginLeft: '8px' }}>TITLE_PLACEHOLDER</span>
+                  </>
+                ),
               },
-            ],
-          };
+              links: [
+                {
+                  text: 'GitHub',
+                  url: 'GITHUB_URL_PLACEHOLDER',
+                },
+              ],
+            };
+          }
           LAYOUTEOF
-          fi
           
-          # Update root layout.tsx for page title and favicon
-          ROOT_LAYOUT=""
-          if [ -f "app/layout.tsx" ]; then
-            ROOT_LAYOUT="app/layout.tsx"
-          elif [ -f "src/app/layout.tsx" ]; then
-            ROOT_LAYOUT="src/app/layout.tsx"
-          fi
+          # Replace placeholders
+          sed -i "s|GITHUB_URL_PLACEHOLDER|https://github.com/${FULL_REPO}|g" lib/layout.shared.tsx
+          sed -i "s|AVATAR_URL_PLACEHOLDER|${AVATAR_URL}|g" lib/layout.shared.tsx
+          sed -i "s|TITLE_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" lib/layout.shared.tsx
           
-          if [ -n "$ROOT_LAYOUT" ]; then
-            # Update metadata in layout.tsx
-            sed -i "s|title: '.*'|title: '${OWNER}/${REPO_NAME}'|g" "$ROOT_LAYOUT" 2>/dev/null || true
-            sed -i "s|description: '.*'|description: 'Documentation for ${OWNER}/${REPO_NAME}'|g" "$ROOT_LAYOUT" 2>/dev/null || true
-            
-            # Add favicon if not present
-            if ! grep -q "icons:" "$ROOT_LAYOUT"; then
-              sed -i "s|export const metadata|export const metadata: Metadata = {\n  icons: {\n    icon: '${AVATAR_URL}',\n  },\n};\n\nexport const _metadata|g" "$ROOT_LAYOUT" 2>/dev/null || true
-            fi
-          fi
+          # Update lib/source.ts to use basePath
+          cat > lib/source.ts << SOURCEEOF
+          import { docs } from 'fumadocs-mdx:collections/server';
+          import { type InferPageType, loader } from 'fumadocs-core/source';
+
+          export const source = loader({
+            baseUrl: '/${REPO_NAME}/docs',
+            source: docs.toFumadocsSource(),
+            plugins: [],
+          });
+
+          export function getPageImage(page: InferPageType<typeof source>) {
+            const segments = [...page.slugs, 'image.png'];
+
+            return {
+              segments,
+              url: '/${REPO_NAME}/og/docs/' + segments.join('/'),
+            };
+          }
+
+          export async function getLLMText(page: InferPageType<typeof source>) {
+            const processed = await page.data.getText('processed');
+
+            return '# ' + page.data.title + '\n\n' + processed;
+          }
+          SOURCEEOF
+          
+          # Update app/layout.tsx with metadata
+          cat > app/layout.tsx << ROOTLAYOUTEOF
+          import { Inter } from 'next/font/google';
+          import { Provider } from '@/components/provider';
+          import type { Metadata } from 'next';
+          import './global.css';
+
+          const inter = Inter({
+            subsets: ['latin'],
+          });
+
+          export const metadata: Metadata = {
+            title: 'TITLE_PLACEHOLDER',
+            description: 'Documentation for TITLE_PLACEHOLDER',
+            icons: {
+              icon: 'AVATAR_URL_PLACEHOLDER',
+            },
+          };
+
+          export default function Layout({ children }: LayoutProps<'/'>) {
+            return (
+              <html lang="en" className={inter.className} suppressHydrationWarning>
+                <body className="flex flex-col min-h-screen">
+                  <Provider>{children}</Provider>
+                </body>
+              </html>
+            );
+          }
+          ROOTLAYOUTEOF
+          
+          sed -i "s|TITLE_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" app/layout.tsx
+          sed -i "s|AVATAR_URL_PLACEHOLDER|${AVATAR_URL}|g" app/layout.tsx
+          
+          # Update app/(home)/page.tsx with custom homepage
+          cat > app/\(home\)/page.tsx << HOMEPAGEEOF
+          import Link from 'next/link';
+
+          export default function HomePage() {
+            return (
+              <div className="flex flex-col justify-center text-center flex-1">
+                <h1 className="text-2xl font-bold mb-4">TITLE_PLACEHOLDER</h1>
+                <p>
+                  You can open{' '}
+                  <Link href="/REPO_NAME_PLACEHOLDER/docs" className="font-medium underline">
+                    /docs
+                  </Link>{' '}
+                  and see the documentation.
+                </p>
+              </div>
+            );
+          }
+          HOMEPAGEEOF
+          
+          sed -i "s|TITLE_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" app/\(home\)/page.tsx
+          sed -i "s|REPO_NAME_PLACEHOLDER|${REPO_NAME}|g" app/\(home\)/page.tsx
 
       - name: Copy user content
         run: |
           mkdir -p content/docs
           
           # Copy user markdown/mdx files to content/docs
-          find /tmp/user-content -name "*.md" -o -name "*.mdx" | while read f; do
-            relpath="${f#/tmp/user-content/}"
-            dir=$(dirname "$relpath")
-            mkdir -p "content/docs/$dir"
-            cp "$f" "content/docs/$relpath"
-          done
-          
-          # Copy any subdirectories that might contain docs
-          for dir in /tmp/user-content/*/; do
-            if [ -d "$dir" ]; then
-              dirname=$(basename "$dir")
-              case "$dirname" in
-                docs|content|src|app|components|lib|public) ;;
-                *) 
-                  if find "$dir" -name "*.md" -o -name "*.mdx" | grep -q .; then
-                    cp -r "$dir" "content/docs/" 2>/dev/null || true
-                  fi
-                  ;;
-              esac
-            fi
-          done
+          if [ -d "/tmp/user-content" ]; then
+            find /tmp/user-content -type f \( -name "*.md" -o -name "*.mdx" \) | while read f; do
+              relpath="${f#/tmp/user-content/}"
+              dir=$(dirname "$relpath")
+              mkdir -p "content/docs/$dir"
+              cp "$f" "content/docs/$relpath"
+            done
+            
+            # Copy subdirectories with docs
+            for dir in /tmp/user-content/*/; do
+              if [ -d "$dir" ]; then
+                dirname=$(basename "$dir")
+                case "$dirname" in
+                  docs|content|src|app|components|lib|public) ;;
+                  *) 
+                    if find "$dir" -type f \( -name "*.md" -o -name "*.mdx" \) | grep -q .; then
+                      cp -r "$dir" "content/docs/" 2>/dev/null || true
+                    fi
+                    ;;
+                esac
+              fi
+            done
+          fi
           
           # Ensure index page exists
           if [ ! -f "content/docs/index.mdx" ] && [ ! -f "content/docs/index.md" ]; then
-            FIRST_DOC=$(find content/docs -name "*.md" -o -name "*.mdx" 2>/dev/null | sort | head -1)
+            FIRST_DOC=$(find content/docs -type f \( -name "*.md" -o -name "*.mdx" \) 2>/dev/null | sort | head -1)
             if [ -n "$FIRST_DOC" ]; then
               cp "$FIRST_DOC" content/docs/index.mdx
-            else
-              cat > content/docs/index.mdx << 'INDEXEOF'
-          ---
-          title: Welcome
-          description: Documentation
-          ---
-
-          # Welcome
-
-          Add your markdown files to get started.
-          INDEXEOF
             fi
           fi
           
-          # Ensure all mdx files have frontmatter with title
-          find content/docs -name "*.mdx" -o -name "*.md" | while read f; do
+          # Ensure all mdx/md files have frontmatter with title
+          find content/docs -type f \( -name "*.mdx" -o -name "*.md" \) | while read f; do
             if ! head -1 "$f" | grep -q "^---"; then
-              filename=$(basename "$f" | sed 's/\.[^.]*$//' | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+              filename=$(basename "$f" | sed 's/\.[^.]*$//' | sed 's/-/ /g')
+              # Capitalize first letter of each word
+              title=$(echo "$filename" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
               TMPFILE=$(mktemp)
-              printf '%s\n' '---' "title: $filename" 'description: Documentation' '---' '' > "$TMPFILE"
+              printf '%s\n' '---' "title: $title" 'description: Documentation' '---' '' > "$TMPFILE"
               cat "$f" >> "$TMPFILE"
               mv "$TMPFILE" "$f"
             fi
