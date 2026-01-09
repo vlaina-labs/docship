@@ -1,0 +1,193 @@
+name: Deploy Fumadocs to GitHub Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-fumadocs-${{ runner.os }}
+          restore-keys: npm-fumadocs-
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          find . -maxdepth 1 -name "*.mdx" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*) ;;
+              node_modules/) ;;
+              .next/) ;;
+              out/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Check if already initialized
+        id: check
+        run: |
+          if [ -f "package.json" ] && grep -q "fumadocs" package.json 2>/dev/null; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Fumadocs project (if not initialized)
+        if: steps.check.outputs.initialized == 'false'
+        run: |
+          npx create-fumadocs-app@latest temp-site --name temp-site --template next --src fumadocs-mdx
+          cp -rn temp-site/* . 2>/dev/null || true
+          cp -rn temp-site/.* . 2>/dev/null || true
+          rm -rf temp-site
+
+      - name: Configure for GitHub Pages
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          
+          # Update next.config.mjs for static export
+          cat > next.config.mjs << 'CONFIGEOF'
+          import { createMDX } from 'fumadocs-mdx/next';
+
+          const withMDX = createMDX();
+
+          /** @type {import('next').NextConfig} */
+          const config = {
+            output: 'export',
+            basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+            images: {
+              unoptimized: true,
+            },
+            reactStrictMode: true,
+          };
+
+          export default withMDX(config);
+          CONFIGEOF
+
+      - name: Copy user content
+        run: |
+          mkdir -p content/docs
+          
+          # Copy user markdown/mdx files to content/docs
+          find /tmp/user-content -name "*.md" -o -name "*.mdx" | while read f; do
+            relpath="${f#/tmp/user-content/}"
+            dir=$(dirname "$relpath")
+            mkdir -p "content/docs/$dir"
+            cp "$f" "content/docs/$relpath"
+          done
+          
+          # Copy any subdirectories that might contain docs
+          for dir in /tmp/user-content/*/; do
+            if [ -d "$dir" ]; then
+              dirname=$(basename "$dir")
+              case "$dirname" in
+                docs|content|src|app|components|lib|public) ;;
+                *) 
+                  if find "$dir" -name "*.md" -o -name "*.mdx" | grep -q .; then
+                    cp -r "$dir" "content/docs/" 2>/dev/null || true
+                  fi
+                  ;;
+              esac
+            fi
+          done
+          
+          # Ensure index page exists
+          if [ ! -f "content/docs/index.mdx" ] && [ ! -f "content/docs/index.md" ]; then
+            FIRST_DOC=$(find content/docs -name "*.md" -o -name "*.mdx" 2>/dev/null | sort | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              cp "$FIRST_DOC" content/docs/index.mdx
+            else
+              cat > content/docs/index.mdx << 'INDEXEOF'
+          ---
+          title: Welcome
+          description: Documentation
+          ---
+
+          # Welcome
+
+          Add your markdown files to get started.
+          INDEXEOF
+            fi
+          fi
+          
+          # Ensure all mdx files have frontmatter with title
+          find content/docs -name "*.mdx" -o -name "*.md" | while read f; do
+            if ! head -1 "$f" | grep -q "^---"; then
+              filename=$(basename "$f" | sed 's/\.[^.]*$//' | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+              TMPFILE=$(mktemp)
+              printf '%s\n' '---' "title: $filename" 'description: Documentation' '---' '' > "$TMPFILE"
+              cat "$f" >> "$TMPFILE"
+              mv "$TMPFILE" "$f"
+            fi
+          done
+
+      - name: Update source configuration
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          
+          # Update source.ts if it exists
+          if [ -f "lib/source.ts" ] || [ -f "src/lib/source.ts" ]; then
+            SOURCE_FILE=$([ -f "lib/source.ts" ] && echo "lib/source.ts" || echo "src/lib/source.ts")
+          fi
+          
+          # Update app layout with custom branding
+          LAYOUT_FILE=""
+          if [ -f "app/layout.tsx" ]; then
+            LAYOUT_FILE="app/layout.tsx"
+          elif [ -f "src/app/layout.tsx" ]; then
+            LAYOUT_FILE="src/app/layout.tsx"
+          fi
+          
+          if [ -n "$LAYOUT_FILE" ]; then
+            sed -i "s|<title>.*</title>|<title>${OWNER}/${REPO_NAME}</title>|g" "$LAYOUT_FILE" 2>/dev/null || true
+          fi
+
+      - name: Install dependencies and Build
+        env:
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: |
+          npm install
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
