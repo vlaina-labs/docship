@@ -58,7 +58,7 @@ jobs:
       - name: Create Fumadocs project (if not initialized)
         if: steps.check.outputs.initialized == 'false'
         run: |
-          npx create-fumadocs-app@latest temp-site --name temp-site --template next --src fumadocs-mdx
+          npx create-fumadocs-app@latest temp-site --name temp-site --template +next+fuma-docs-mdx+static
           cp -rn temp-site/* . 2>/dev/null || true
           cp -rn temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
