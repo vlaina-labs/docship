@@ -1,0 +1,102 @@
+name: Deploy Starlight to GitHub Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-starlight-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-starlight-
+
+      - name: Setup Starlight
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          
+          mkdir -p temp-site/src/content/docs
+          mkdir -p temp-site/src/assets
+          mkdir -p temp-site/public
+          mkdir -p temp-site/src/components
+          
+          curl -sL "https://github.com/${OWNER}.png" -o temp-site/src/assets/avatar.png || true
+          curl -sL "https://github.com/${OWNER}.png" -o temp-site/public/favicon.png || true
+          
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} temp-site/src/content/docs/ \; 2>/dev/null || true
+          if [ -f "README.md" ]; then
+            cp README.md temp-site/src/content/docs/index.md
+          fi
+          
+          for dir in */; do
+            case "$dir" in
+              .*|temp-site/|node_modules/) ;;
+              *) cp -r "$dir" temp-site/src/content/docs/ 2>/dev/null || true ;;
+            esac
+          done
+          
+          if [ ! -f "temp-site/src/content/docs/index.md" ]; then
+            FIRST_DOC=$(find temp-site/src/content/docs -name "*.md" -type f | sort | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              cp "$FIRST_DOC" temp-site/src/content/docs/index.md
+            else
+              printf '%s\n' '---' 'title: Welcome' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > temp-site/src/content/docs/index.md
+            fi
+          fi
+          
+          if ! head -5 temp-site/src/content/docs/index.md | grep -q "^---"; then
+            TEMP_CONTENT=$(cat temp-site/src/content/docs/index.md)
+            printf '%s\n' '---' 'title: Home' '---' '' "$TEMP_CONTENT" > temp-site/src/content/docs/index.md
+          fi
+          
+          cd temp-site
+          
+          printf '%s\n' '{' '  "name": "temp-site",' '  "type": "module",' '  "version": "0.0.0",' '  "scripts": {' '    "build": "astro build"' '  },' '  "dependencies": {' '    "astro": "^5.0.0",' '    "@astrojs/starlight": "^0.32.0",' '    "sharp": "^0.33.0"' '  }' '}' > package.json
+          
+          printf '%s\n' '---' "import type { Props } from '@astrojs/starlight/props';" "import Default from '@astrojs/starlight/components/SiteTitle.astro';" '---' '' "<a href=\"https://github.com/${OWNER}\" class=\"site-title sl-flex\">" '  <Default {...Astro.props}><slot /></Default>' '</a>' '' '<style>' '  .site-title { text-decoration: none; color: inherit; }' '</style>' > src/components/SiteTitle.astro
+          
+          printf '%s\n' "import { defineConfig } from 'astro/config';" "import starlight from '@astrojs/starlight';" '' "export default defineConfig({" "  site: 'https://${OWNER}.github.io'," "  base: '/${REPO_NAME}'," "  integrations: [" "    starlight({" "      title: '${OWNER}/${REPO_NAME}'," "      logo: {" "        src: './src/assets/avatar.png'," "      }," "      favicon: '/favicon.png'," "      social: {" "        github: 'https://github.com/${OWNER}/${REPO_NAME}'," "      }," "      sidebar: [" "        {" "          label: 'Docs'," "          autogenerate: { directory: '.' }," "        }," "      ]," "      credits: false," "      components: {" "        SiteTitle: './src/components/SiteTitle.astro'," "      }," "    })," "  ]," "});" > astro.config.mjs
+          
+          npm install
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: temp-site/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
