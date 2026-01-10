@@ -54,6 +54,8 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   
   # Remove malformed HTML tags (duplicate attributes, missing quotes, etc.)
   # These cause Vue compiler errors - be aggressive and remove entire lines
+  # First convert CRLF to LF to ensure sed patterns work
+  sed -i 's/\r$//' "$f" 2>/dev/null || true
   # Remove lines with duplicate class attributes
   sed -i '/class="[^"]*"class=/d' "$f" 2>/dev/null || true
   # Remove lines with single-quoted class
@@ -62,7 +64,7 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i '/class=[a-z]/d' "$f" 2>/dev/null || true
   # Remove lines with problematic data-x attributes
   sed -i '/data-x=/d' "$f" 2>/dev/null || true
-  # Remove unclosed HTML tags
+  # Remove unclosed HTML tags - use pattern that matches start of line
   sed -i '/^<div>$/d' "$f" 2>/dev/null || true
   sed -i '/^<p>$/d' "$f" 2>/dev/null || true
   sed -i '/^<span>$/d' "$f" 2>/dev/null || true
