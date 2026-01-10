@@ -71,8 +71,13 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
         if ($0 ~ /^<img /) { next }
         if ($0 ~ /^<div class=/) { next }
         if ($0 ~ /^<div data-x=/) { next }
-        # Remove lines with duplicate attributes
+        # Remove lines with duplicate attributes (class="..."class=)
         if ($0 ~ /class="[^"]*"class=/) { next }
+        # Remove lines with single quotes class
+        if ($0 ~ /class=\047/) { next }
+        # Remove lines with unquoted attributes
+        if ($0 ~ /class=[a-z]/) { next }
+        if ($0 ~ /data-x=[a-z]/) { next }
       }
       print
     }
