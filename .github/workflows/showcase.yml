@@ -95,7 +95,7 @@ jobs:
       deploy: false
 
   build-jekyll:
-    uses: ./.github/workflows/jekyll.yml
+    uses: ./.github/workflows/jekyll-just-the-docs.yml
     with:
       base_path_suffix: jekyll
       deploy: false

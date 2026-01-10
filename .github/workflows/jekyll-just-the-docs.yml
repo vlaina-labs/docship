@@ -60,6 +60,10 @@ jobs:
           # Create Gemfile
           printf '%s\n' 'source "https://rubygems.org"' 'gem "jekyll", "~> 4.3"' 'gem "just-the-docs", "~> 0.10"' > Gemfile
           
+          # Download avatar as logo
+          mkdir -p assets/images
+          curl -sL "${AVATAR_URL}" -o assets/images/logo.png || true
+          
           # Create _config.yml
           cat > _config.yml << EOF
           title: ${OWNER}/${REPO_NAME}
@@ -68,7 +72,7 @@ jobs:
           url: "https://${OWNER}.github.io"
           theme: just-the-docs
           favicon_ico: "${AVATAR_URL}"
-          logo: "${AVATAR_URL}"
+          logo: "/assets/images/logo.png"
           aux_links:
             GitHub: "${GITHUB_URL}"
           aux_links_new_tab: true
@@ -79,7 +83,7 @@ jobs:
           heading_anchors: true
           back_to_top: true
           back_to_top_text: "Back to top"
-          footer_content: "Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> · <a href=\"https://github.com/just-the-docs/just-the-docs\" target=\"_blank\">Just the Docs</a>"
+          footer_content: "Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> · <a href=\"https://github.com/jekyll/jekyll\" target=\"_blank\">Jekyll</a> · <a href=\"https://github.com/just-the-docs/just-the-docs\" target=\"_blank\">Just the Docs</a>"
           color_scheme: light
           callouts:
             note:
