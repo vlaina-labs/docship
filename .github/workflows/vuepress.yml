@@ -162,6 +162,22 @@ jobs:
             done
           fi
           
+          # VuePress uses README.md as homepage, rename index.md to README.md
+          if [ -f "docs/index.md" ] && [ ! -f "docs/README.md" ]; then
+            mv docs/index.md docs/README.md
+          elif [ -f "docs/index.md" ] && [ -f "docs/README.md" ]; then
+            # Both exist, keep README.md, rename index.md to avoid conflict
+            mv docs/index.md docs/home.md
+          fi
+          
+          # Same for subdirectories
+          find docs -mindepth 2 -name "index.md" -type f | while read f; do
+            dir=$(dirname "$f")
+            if [ ! -f "$dir/README.md" ]; then
+              mv "$f" "$dir/README.md"
+            fi
+          done
+          
           # Create README.md (homepage) if not exists
           if [ ! -f "docs/README.md" ]; then
             FIRST_DOC=$(find docs -maxdepth 1 -type f -name "*.md" ! -name "README.md" 2>/dev/null | sort | head -1)
@@ -187,16 +203,31 @@ jobs:
           const fs = require('fs');
           const path = require('path');
           
-          function generateSidebar(dir, prefix = '/') {
+          function generateSidebar(dir) {
             const items = [];
             const files = fs.readdirSync(dir).sort();
             
+            // Add root level markdown files first
             for (const file of files) {
               const fullPath = path.join(dir, file);
               const stat = fs.statSync(fullPath);
               
-              if (stat.isDirectory() && !file.startsWith('.') && !file.startsWith('_') && file !== 'node_modules') {
-                const children = generateSidebarChildren(fullPath, `${prefix}${file}/`);
+              if (stat.isFile() && file.endsWith('.md') && 
+                  file !== 'README.md' && file !== 'index.md' && 
+                  !file.startsWith('_')) {
+                const name = file.replace('.md', '');
+                items.push('/' + name);
+              }
+            }
+            
+            // Then add directories as groups
+            for (const file of files) {
+              const fullPath = path.join(dir, file);
+              const stat = fs.statSync(fullPath);
+              
+              if (stat.isDirectory() && !file.startsWith('.') && 
+                  !file.startsWith('_') && file !== 'node_modules') {
+                const children = generateChildren(fullPath, '/' + file + '/');
                 if (children.length > 0) {
                   const title = file.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                   items.push({
@@ -205,35 +236,33 @@ jobs:
                     children
                   });
                 }
-              } else if (file.endsWith('.md') && file !== 'README.md' && !file.startsWith('_')) {
-                // For root level files, use path without extension
-                const name = file.replace('.md', '');
-                items.push(`${prefix}${name}`);
               }
             }
             
             return items;
           }
           
-          function generateSidebarChildren(dir, prefix) {
+          function generateChildren(dir, prefix) {
             const items = [];
             const files = fs.readdirSync(dir).sort();
-            
-            // Add README first if exists (as empty string for folder index)
-            if (files.includes('README.md')) {
-              items.push('');
-            }
             
             for (const file of files) {
               const fullPath = path.join(dir, file);
               const stat = fs.statSync(fullPath);
               
-              if (stat.isFile() && file.endsWith('.md') && file !== 'README.md' && !file.startsWith('_')) {
-                items.push(file.replace('.md', ''));
+              if (stat.isFile() && file.endsWith('.md') && 
+                  file !== 'index.md' && !file.startsWith('_')) {
+                if (file === 'README.md') {
+                  // README.md is the folder index, use empty string relative to prefix
+                  items.unshift(prefix);
+                } else {
+                  const name = file.replace('.md', '');
+                  items.push(prefix + name);
+                }
               }
             }
             
-            return items.map(item => item === '' ? prefix : `${prefix}${item}`);
+            return items;
           }
           
           const sidebar = generateSidebar('docs');
@@ -244,7 +273,6 @@ jobs:
           
           // Only update if we have items, otherwise keep 'auto'
           if (sidebar.length > 0) {
-            // VuePress sidebar format: array of strings or objects
             const sidebarConfig = JSON.stringify(sidebar, null, 2);
             config = config.replace(
               /sidebar:\s*'auto'/,
