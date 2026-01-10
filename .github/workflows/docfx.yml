@@ -87,7 +87,7 @@ jobs:
               "globalMetadata": {
                 "_appTitle": "${OWNER}/${REPO_NAME}",
                 "_appName": "${OWNER}/${REPO_NAME}",
-                "_appFooter": "<span>Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> · <a href=\"https://github.com/dotnet/docfx\" target=\"_blank\">DocFX</a></span>",
+                "_appFooter": "<span>Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> 路 <a href=\"https://github.com/dotnet/docfx\" target=\"_blank\">DocFX</a></span>",
                 "_enableSearch": true,
                 "_disableContribution": true
               },

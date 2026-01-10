@@ -138,7 +138,7 @@ jobs:
                   if (!document.querySelector('.custom-footer')) {
                     const footer = document.createElement('div');
                     footer.className = 'custom-footer';
-                    footer.innerHTML = 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/vuejs/vuepress" target="_blank">VuePress</a>';
+                    footer.innerHTML = 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> 路 <a href="https://github.com/vuejs/vuepress" target="_blank">VuePress</a>';
                     footer.style.cssText = 'text-align: center; padding: 2rem 0; color: #4e6e8e; font-size: 0.9rem; border-top: 1px solid #eaecef; margin-top: 2rem;';
                     const page = document.querySelector('.page');
                     if (page && !page.querySelector('.custom-footer')) {

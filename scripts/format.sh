@@ -10,11 +10,11 @@ if [[ "$CONTENT_DIR" != /* ]]; then
   CONTENT_DIR="$WORK_DIR/$CONTENT_DIR"
 fi
 
-echo "📝 Formatting markdown files in: $CONTENT_DIR"
+echo "馃摑 Formatting markdown files in: $CONTENT_DIR"
 
 # Check if npx is available
 if ! command -v npx &> /dev/null; then
-  echo "❌ npx not found, please install Node.js"
+  echo "鉂?npx not found, please install Node.js"
   exit 1
 fi
 
@@ -100,29 +100,29 @@ try {
   const content = readFileSync(file, 'utf8')
   const result = await processor.process(content)
   writeFileSync(file, String(result))
-  console.log(`  ✓ ${file}`)
+  console.log(`  鉁?${file}`)
 } catch (err) {
   // Don't exit with error, just log and continue
-  console.error(`  ⚠ ${file}`)
+  console.error(`  鈿?${file}`)
 }
 EOF
 
 # Install dependencies
-echo "📦 Installing remark..."
+echo "馃摝 Installing remark..."
 cd "$TEMP_DIR"
 npm init -y > /dev/null 2>&1
 if ! npm install unified remark-parse remark-gfm remark-frontmatter remark-stringify unist-util-visit --silent 2>/dev/null; then
-  echo "❌ Failed to install remark dependencies"
+  echo "鉂?Failed to install remark dependencies"
   exit 1
 fi
 cd "$WORK_DIR"
 
 # Process all markdown files
-echo "🔄 Processing files..."
+echo "馃攧 Processing files..."
 
 find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) ! -path "*/node_modules/*" ! -path "*/.git/*" -print0 | while IFS= read -r -d '' f; do
   node "$TEMP_DIR/process-md.mjs" "$f"
 done
 
 COUNT=$(find "$CONTENT_DIR" -type f \( -name '*.md' -o -name '*.mdx' \) ! -path "*/node_modules/*" ! -path "*/.git/*" | wc -l)
-echo "✅ Formatted $COUNT markdown files"
+echo "鉁?Formatted $COUNT markdown files"
