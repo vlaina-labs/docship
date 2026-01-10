@@ -59,6 +59,7 @@ jobs:
           cp -rn temp-site/* . 2>/dev/null || true
           cp -rn temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
+          rm -rf app/llms-full.txt app/og
 
       - name: Configure for GitHub Pages
         run: |
