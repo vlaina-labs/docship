@@ -1,0 +1,181 @@
+name: Deploy Nextra to GitHub Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-nextra-${{ runner.os }}
+          restore-keys: npm-nextra-
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          find . -maxdepth 1 -name "*.mdx" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|node_modules/|.next/|out/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Check if already initialized
+        id: check
+        run: |
+          if [ -f "package.json" ] && grep -q "nextra" package.json 2>/dev/null; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Nextra project
+        if: steps.check.outputs.initialized == 'false'
+        run: |
+          npm init -y
+          npm install next react react-dom nextra nextra-theme-docs
+          
+          mkdir -p pages
+          
+          cat > next.config.mjs << 'EOF'
+          import nextra from 'nextra';
+
+          const withNextra = nextra({
+            theme: 'nextra-theme-docs',
+            themeConfig: './theme.config.tsx',
+          });
+
+          export default withNextra({
+            output: 'export',
+            images: { unoptimized: true },
+            basePath: process.env.BASE_PATH || '',
+          });
+          EOF
+
+      - name: Configure for GitHub Pages
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          
+          cat > theme.config.tsx << EOF
+          import { useConfig } from 'nextra-theme-docs';
+
+          export default {
+            logo: (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img src="${AVATAR_URL}" alt="Logo" width={24} height={24} style={{ borderRadius: '50%' }} />
+                <span>${OWNER}/${REPO_NAME}</span>
+              </span>
+            ),
+            project: {
+              link: 'https://github.com/${OWNER}/${REPO_NAME}',
+            },
+            docsRepositoryBase: 'https://github.com/${OWNER}/${REPO_NAME}',
+            footer: {
+              content: '${OWNER}/${REPO_NAME}',
+            },
+            head: (
+              <>
+                <link rel="icon" href="${AVATAR_URL}" />
+              </>
+            ),
+          };
+          EOF
+          
+          cat > pages/_meta.json << 'METAEOF'
+          {
+            "index": "Introduction"
+          }
+          METAEOF
+
+      - name: Copy user content
+        run: |
+          rm -f pages/index.mdx pages/index.md 2>/dev/null || true
+          
+          if [ -d "/tmp/user-content" ]; then
+            find /tmp/user-content -type f \( -name "*.md" -o -name "*.mdx" \) | while read f; do
+              relpath="${f#/tmp/user-content/}"
+              dir=$(dirname "$relpath")
+              mkdir -p "pages/$dir"
+              cp "$f" "pages/$relpath"
+            done
+            
+            for dir in /tmp/user-content/*/; do
+              if [ -d "$dir" ]; then
+                dirname=$(basename "$dir")
+                case "$dirname" in
+                  pages|src|app|components|lib|public|node_modules) ;;
+                  *) 
+                    if find "$dir" -type f \( -name "*.md" -o -name "*.mdx" \) | grep -q .; then
+                      cp -r "$dir" "pages/" 2>/dev/null || true
+                    fi
+                    ;;
+                esac
+              fi
+            done
+          fi
+          
+          if [ ! -f "pages/index.mdx" ] && [ ! -f "pages/index.md" ]; then
+            FIRST_DOC=$(find pages -type f \( -name "*.md" -o -name "*.mdx" \) 2>/dev/null | sort | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              cp "$FIRST_DOC" pages/index.mdx
+            else
+              printf '%s\n' '# Welcome' '' 'This is your documentation site. Add markdown files to get started.' > pages/index.mdx
+            fi
+          fi
+          
+          find pages -type f \( -name "*.mdx" -o -name "*.md" \) | while read f; do
+            if head -1 "$f" | grep -q "^---"; then
+              :
+            fi
+          done
+
+      - name: Install dependencies and Build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}
+        run: |
+          npm install
+          npm run build || npx next build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
