@@ -24,19 +24,29 @@ These should be automatically cleaned:
 
 ## Invalid HTML Tags
 
+```html
 <invalid-tag>This is not a valid HTML tag</invalid-tag>
+```
 
+```html
 <script>alert('This should be escaped or ignored')</script>
+```
 
+```html
 <style>body { background: red; }</style>
+```
 
+```html
 <div onclick="alert('xss')">Click me</div>
+```
 
 ## Unclosed Tags
 
+```html
 <div>This div is never closed
 
 <span>Neither is this span
+```
 
 ## Raw HTML Mixed with Markdown
 
