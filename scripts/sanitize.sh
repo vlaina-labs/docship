@@ -111,6 +111,8 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i 's/<span #[^>]*>[^<]*<\/span>//gi' "$f" 2>/dev/null || true
   sed -i 's/<p #[^>]*>[^<]*<\/p>//gi' "$f" 2>/dev/null || true
   sed -i 's/<a #[^>]*>[^<]*<\/a>//gi' "$f" 2>/dev/null || true
+  # Remove ANY tag with # attribute (Vue v-slot shorthand) - catches all cases
+  sed -i '/<[a-z]* #[a-z]/d' "$f" 2>/dev/null || true
   # Remove tags with :prop or @event
   sed -i -E 's/<[a-z]+[^>]*:[a-z]+="[^"]*"[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<[a-z]+[^>]*@[a-z]+="[^"]*"[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true

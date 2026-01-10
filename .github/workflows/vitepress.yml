@@ -142,6 +142,8 @@ jobs:
 
       - name: Copy user content
         run: |
+          # Clear docs directory first to ensure sanitized content overwrites
+          rm -rf docs/*
           cp -r /tmp/user-content/* docs/ 2>/dev/null || true
           
           # Create index.md if needed
