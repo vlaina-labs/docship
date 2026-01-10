@@ -64,6 +64,12 @@ jobs:
             fi
           fi
           
+          # Clean broken image links from markdown files
+          find site -name "*.md" -type f | while read f; do
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          done
+          
           printf '%s\n' '<!DOCTYPE html>' '<html lang="en">' '<head>' '  <meta charset="UTF-8">' '  <meta name="viewport" content="width=device-width, initial-scale=1.0">' "  <title>${OWNER}/${REPO_NAME}</title>" "  <link rel=\"icon\" href=\"https://github.com/${OWNER}.png\">" '  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">' '  <style>' '    .sidebar .app-name-link img { border-radius: 50%; }' '  </style>' '</head>' '<body>' '  <div id="app"></div>' '  <script>' '    window.$docsify = {' "      name: '<img src=\"https://github.com/${OWNER}.png\" width=\"32\" style=\"vertical-align:middle;margin-right:8px;border-radius:50%\">${OWNER}/${REPO_NAME}'," "      nameLink: 'https://github.com/${OWNER}'," "      repo: 'https://github.com/${FULL_REPO}'," '      loadSidebar: true,' '      subMaxLevel: 3,' '      search: {' "        placeholder: 'Search'," "        noData: 'No results'," '        depth: 3' '      },' '      auto2top: true' '    }' '  </script>' '  <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>' '  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>' '  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>' '</body>' '</html>' > site/index.html
           
           if [ ! -f "site/_sidebar.md" ]; then

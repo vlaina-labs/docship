@@ -71,6 +71,10 @@ jobs:
           done
           
           find temp-site/src/content/docs -name "*.md" -type f | while read f; do
+            # Clean broken image links
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+            
             if ! head -3 "$f" | grep -q "^---"; then
               FILENAME=$(basename "$f" .md)
               TITLE=$(echo "$FILENAME" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')

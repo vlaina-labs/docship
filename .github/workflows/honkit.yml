@@ -125,6 +125,21 @@ jobs:
           elif [ -f "index.md" ] && [ -f "README.md" ]; then
             mv index.md home.md
           fi
+          
+          # Clean broken image links from markdown files
+          find . -maxdepth 1 -name "*.md" -type f | while read f; do
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          done
+          for dir in */; do
+            case "$dir" in
+              _book/|node_modules/) ;;
+              *) find "$dir" -name "*.md" -type f | while read f; do
+                sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+                sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+              done ;;
+            esac
+          done
 
       - name: Generate SUMMARY.md
         run: |

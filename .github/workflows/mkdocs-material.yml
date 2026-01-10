@@ -69,6 +69,12 @@ jobs:
           mkdir -p docs
           cp -r /tmp/user-content/* docs/ 2>/dev/null || true
           
+          # Clean broken image links from markdown files
+          find docs -name "*.md" -type f | while read f; do
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          done
+          
           if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then
             printf '%s\n' '# Welcome' '' 'Add your markdown files to get started.' > docs/index.md
           else

@@ -232,6 +232,12 @@ jobs:
           READMEOF
             fi
           fi
+          
+          # Clean broken image links from markdown files
+          find docs -name "*.md" -type f | while read f; do
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          done
 
       - name: Generate sidebar config
         run: |

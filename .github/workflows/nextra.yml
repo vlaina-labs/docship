@@ -234,6 +234,12 @@ jobs:
               printf '%s\n' '# Welcome' '' 'This is your documentation site. Add markdown files to get started.' > src/content/index.mdx
             fi
           fi
+          
+          # Clean broken image links from all markdown files
+          find src/content -type f \( -name "*.md" -o -name "*.mdx" \) | while read f; do
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          done
 
       - name: Install dependencies and Build
         env:

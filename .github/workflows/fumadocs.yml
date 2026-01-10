@@ -332,6 +332,10 @@ jobs:
           fi
           
           find content/docs -type f \( -name "*.mdx" -o -name "*.md" \) | while read f; do
+            # Clean broken image links
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+            
             if ! head -1 "$f" | grep -q "^---"; then
               filename=$(basename "$f" | sed 's/\.[^.]*$//' | sed 's/-/ /g')
               title=$(echo "$filename" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')

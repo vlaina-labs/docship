@@ -122,6 +122,12 @@ jobs:
             fi
           done
           
+          # Clean broken image links from markdown files
+          find docs -name "*.md" -type f | while read f; do
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          done
+          
           cat > rspress.config.ts << CONFIGEOF
           import { defineConfig } from 'rspress/config';
           
@@ -131,6 +137,9 @@ jobs:
             title: '${OWNER}/${REPO_NAME}',
             icon: '/favicon.png',
             logo: '/logo.png',
+            markdown: {
+              mdxRs: false,
+            },
             themeConfig: {
               socialLinks: [
                 { icon: 'github', mode: 'link', content: 'https://github.com/${OWNER}/${REPO_NAME}' },

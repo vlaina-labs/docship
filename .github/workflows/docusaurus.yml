@@ -71,6 +71,14 @@ jobs:
           cp -rn temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
 
+      - name: Sanitize markdown files
+        run: |
+          # Remove broken image links (e.g., assets/xxx.html; charset=utf-8)
+          find /tmp/user-content -name "*.md" -type f 2>/dev/null | while read f; do
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          done
+
       - name: Configure for Docs-only mode
         env:
           BASE_SUFFIX: ${{ inputs.base_path_suffix }}
@@ -90,10 +98,13 @@ jobs:
             organizationName: '${GITHUB_REPOSITORY_OWNER}',
             projectName: '${REPO_NAME}',
             onBrokenLinks: 'ignore',
+            onBrokenMarkdownLinks: 'ignore',
+            onBrokenAnchors: 'ignore',
             markdown: {
               format: 'md',
-              hooks: {
-                onBrokenMarkdownLinks: 'ignore',
+              parseFrontMatter: async (params) => {
+                const result = await params.defaultParseFrontMatter(params);
+                return result;
               },
             },
             i18n: {
@@ -147,6 +158,12 @@ jobs:
           rm -rf blog src/pages src/components docs
           mkdir -p content
           cp -r /tmp/user-content/* content/ 2>/dev/null || true
+          
+          # Clean broken image links from markdown files
+          find content -name "*.md" -type f | while read f; do
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          done
           
           if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
             printf '%s\n' '---' 'slug: /' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > content/index.md
