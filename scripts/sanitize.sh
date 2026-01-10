@@ -82,6 +82,12 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   # Remove CDATA sections (not allowed in HTML context)
   sed -i 's/<!\[CDATA\[[^]]*\]\]>//gi' "$f" 2>/dev/null || true
   sed -i '/<!\[CDATA\[/d' "$f" 2>/dev/null || true
+  # Remove DOCTYPE declarations
+  sed -i '/<!DOCTYPE/d' "$f" 2>/dev/null || true
+  # Remove problematic comments
+  sed -i '/^<!---/d' "$f" 2>/dev/null || true
+  sed -i '/^<!---->$/d' "$f" 2>/dev/null || true
+  sed -i '/<!-- -- /d' "$f" 2>/dev/null || true
   
   # ===== STEP 6: REMOVE VUE/REACT COMPONENTS =====
   sed -i -E 's/<[A-Z][a-zA-Z]*[^>]*\/>//g' "$f" 2>/dev/null || true
