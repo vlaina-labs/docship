@@ -39,8 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-nextra-${{ runner.os }}
-          restore-keys: npm-nextra-
+          key: ${{ runner.os }}-nextra
+          restore-keys: |
+            ${{ runner.os }}-nextra
 
       - name: Backup user content
         run: |

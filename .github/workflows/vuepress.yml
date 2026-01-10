@@ -39,8 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-vuepress-${{ runner.os }}
-          restore-keys: npm-vuepress-
+          key: ${{ runner.os }}-vuepress
+          restore-keys: |
+            ${{ runner.os }}-vuepress
 
       - name: Backup user content
         run: |

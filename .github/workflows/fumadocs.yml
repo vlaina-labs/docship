@@ -39,8 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-fumadocs-${{ runner.os }}
-          restore-keys: npm-fumadocs-
+          key: ${{ runner.os }}-fumadocs
+          restore-keys: |
+            ${{ runner.os }}-fumadocs
 
       - name: Backup user content
         run: |

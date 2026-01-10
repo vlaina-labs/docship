@@ -39,8 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-honkit-${{ runner.os }}
-          restore-keys: npm-honkit-
+          key: ${{ runner.os }}-honkit
+          restore-keys: |
+            ${{ runner.os }}-honkit
 
       - name: Backup user content
         run: |

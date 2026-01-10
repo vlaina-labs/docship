@@ -39,8 +39,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-mkdocs-${{ runner.os }}
-          restore-keys: pip-mkdocs-
+          key: ${{ runner.os }}-mkdocs
+          restore-keys: |
+            ${{ runner.os }}-mkdocs
 
       - name: Install MkDocs Material
         run: pip install mkdocs-material
