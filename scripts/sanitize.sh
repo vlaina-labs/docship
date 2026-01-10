@@ -52,6 +52,12 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i 's/<\/body>//gi' "$f" 2>/dev/null || true
   sed -i 's/<button[^>]*>[^<]*<\/button>//gi' "$f" 2>/dev/null || true
   
+  # Remove malformed HTML tags (duplicate attributes, missing quotes, etc.)
+  # These cause Vue compiler errors
+  sed -i -E 's/<div[^>]*class="[^"]*"class="[^"]*"[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i -E "s/<div[^>]*class='[^']*'[^>]*>//gi" "$f" 2>/dev/null || true
+  sed -i 's/<div class=noquotes>//gi' "$f" 2>/dev/null || true
+  
   # Remove event handlers
   sed -i -E 's/ on[a-z]+="[^"]*"//gi' "$f" 2>/dev/null || true
   
@@ -163,6 +169,23 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   
   # ===== STEP 12: REMOVE JSX EXPRESSIONS =====
   sed -i -E 's/^\{[a-zA-Z_][a-zA-Z0-9_. ()]*\}$//g' "$f" 2>/dev/null || true
+  
+  # ===== STEP 13: REMOVE TEMPLATE LITERALS OUTSIDE CODE BLOCKS =====
+  # These cause HonKit to add {% raw %} which then fails
+  awk '
+    BEGIN { in_code = 0 }
+    /^```/ { in_code = !in_code; print; next }
+    /^~~~/ { in_code = !in_code; print; next }
+    {
+      if (!in_code) {
+        # Remove {`...`} template literal expressions
+        gsub(/\{\`[^\`]*\`\}/, "")
+        # Remove ${...} inside backticks
+        gsub(/\$\{[^}]*\}/, "")
+      }
+      print
+    }
+  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f" 2>/dev/null || true
   
 done
 
