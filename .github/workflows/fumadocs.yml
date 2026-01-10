@@ -33,6 +33,7 @@ jobs:
 
       - name: Backup user content
         run: |
+          echo "========== BACKUP USER CONTENT =========="
           mkdir -p /tmp/user-content
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
           find . -maxdepth 1 -name "*.mdx" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
@@ -45,29 +46,43 @@ jobs:
               *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
             esac
           done
+          echo "User content backed up:"
+          ls -la /tmp/user-content/ || echo "No content found"
 
       - name: Check if already initialized
         id: check
         run: |
+          echo "========== CHECK INITIALIZATION =========="
           if [ -f "package.json" ] && grep -q "fumadocs" package.json 2>/dev/null; then
             echo "initialized=true" >> $GITHUB_OUTPUT
+            echo "Project already initialized with Fumadocs"
+            cat package.json
           else
             echo "initialized=false" >> $GITHUB_OUTPUT
+            echo "Project NOT initialized, will create new Fumadocs project"
           fi
 
       - name: Create Fumadocs project (if not initialized)
         if: steps.check.outputs.initialized == 'false'
         run: |
+          echo "========== CREATE FUMADOCS PROJECT =========="
           npx create-fumadocs-app@latest temp-site --template +next+fuma-docs-mdx+static
+          echo "Template created, listing files:"
+          ls -la temp-site/
+          echo "--- temp-site/package.json ---"
+          cat temp-site/package.json
           cp -rn temp-site/* . 2>/dev/null || true
           cp -rn temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
+          echo "Files after copy:"
+          ls -la
 
       - name: Configure for GitHub Pages
         run: |
+          echo "========== CONFIGURE FOR GITHUB PAGES =========="
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          echo "REPO_NAME: $REPO_NAME"
           
-          # Update next.config.mjs with basePath for GitHub Pages
           cat > next.config.mjs << CONFIGEOF
           import { createMDX } from 'fumadocs-mdx/next';
 
@@ -82,15 +97,25 @@ jobs:
 
           export default withMDX(config);
           CONFIGEOF
+          
+          echo "--- next.config.mjs ---"
+          cat next.config.mjs
 
       - name: Configure branding
         run: |
+          echo "========== CONFIGURE BRANDING =========="
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           FULL_REPO="${GITHUB_REPOSITORY}"
           AVATAR_URL="https://github.com/${OWNER}.png"
           
-          # Update lib/layout.shared.tsx with custom branding
+          echo "REPO_NAME: $REPO_NAME"
+          echo "OWNER: $OWNER"
+          echo "FULL_REPO: $FULL_REPO"
+          echo "AVATAR_URL: $AVATAR_URL"
+          
+          # Update lib/layout.shared.tsx
+          echo "--- Creating lib/layout.shared.tsx ---"
           cat > lib/layout.shared.tsx << 'LAYOUTEOF'
           import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 
@@ -121,12 +146,14 @@ jobs:
           }
           LAYOUTEOF
           
-          # Replace placeholders
           sed -i "s|GITHUB_URL_PLACEHOLDER|https://github.com/${FULL_REPO}|g" lib/layout.shared.tsx
           sed -i "s|AVATAR_URL_PLACEHOLDER|${AVATAR_URL}|g" lib/layout.shared.tsx
           sed -i "s|TITLE_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" lib/layout.shared.tsx
+          echo "--- lib/layout.shared.tsx ---"
+          cat lib/layout.shared.tsx
           
-          # Update lib/source.ts - baseUrl should NOT include basePath (Next.js handles it)
+          # Update lib/source.ts
+          echo "--- Creating lib/source.ts ---"
           cat > lib/source.ts << 'SOURCEEOF'
           import { docs } from 'fumadocs-mdx:collections/server';
           import { type InferPageType, loader } from 'fumadocs-core/source';
@@ -152,8 +179,11 @@ jobs:
             return `# ${page.data.title}\n\n${processed}`;
           }
           SOURCEEOF
+          echo "--- lib/source.ts ---"
+          cat lib/source.ts
           
-          # Update app/layout.tsx with metadata
+          # Update app/layout.tsx
+          echo "--- Creating app/layout.tsx ---"
           cat > app/layout.tsx << ROOTLAYOUTEOF
           import { Inter } from 'next/font/google';
           import { Provider } from '@/components/provider';
@@ -185,17 +215,29 @@ jobs:
           
           sed -i "s|TITLE_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" app/layout.tsx
           sed -i "s|AVATAR_URL_PLACEHOLDER|${AVATAR_URL}|g" app/layout.tsx
+          echo "--- app/layout.tsx ---"
+          cat app/layout.tsx
           
-          # Update app/(home)/page.tsx to redirect to /docs
-          cat > app/\(home\)/page.tsx << 'HOMEPAGEEOF'
+          # Update app/(home)/page.tsx
+          echo "--- Creating app/(home)/page.tsx ---"
+          cat > 'app/(home)/page.tsx' << 'HOMEPAGEEOF'
           import { redirect } from 'next/navigation';
 
           export default function HomePage() {
             redirect('/docs');
           }
           HOMEPAGEEOF
+          echo "--- app/(home)/page.tsx ---"
+          cat 'app/(home)/page.tsx'
           
           # Update app/docs/[[...slug]]/page.tsx with clerk style TOC
+          echo "--- Creating app/docs/[[...slug]]/page.tsx ---"
+          echo "Directory before mkdir:"
+          ls -la 'app/docs/' || echo "app/docs/ does not exist"
+          mkdir -p 'app/docs/[[...slug]]'
+          echo "Directory after mkdir:"
+          ls -la 'app/docs/'
+          
           cat > 'app/docs/[[...slug]]/page.tsx' << 'PAGEEOF'
           import { getPageImage, source } from '@/lib/source';
           import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
@@ -250,21 +292,29 @@ jobs:
             };
           }
           PAGEEOF
+          
+          echo "--- app/docs/[[...slug]]/page.tsx ---"
+          cat 'app/docs/[[...slug]]/page.tsx'
+          
+          echo "--- Verifying tableOfContent style ---"
+          grep -n "tableOfContent" 'app/docs/[[...slug]]/page.tsx' || echo "tableOfContent NOT FOUND!"
+          grep -n "clerk" 'app/docs/[[...slug]]/page.tsx' || echo "clerk NOT FOUND!"
 
       - name: Copy user content
         run: |
+          echo "========== COPY USER CONTENT =========="
           mkdir -p content/docs
           
-          # Copy user markdown/mdx files to content/docs
           if [ -d "/tmp/user-content" ]; then
+            echo "User content found, copying..."
             find /tmp/user-content -type f \( -name "*.md" -o -name "*.mdx" \) | while read f; do
               relpath="${f#/tmp/user-content/}"
               dir=$(dirname "$relpath")
               mkdir -p "content/docs/$dir"
               cp "$f" "content/docs/$relpath"
+              echo "Copied: $f -> content/docs/$relpath"
             done
             
-            # Copy subdirectories with docs
             for dir in /tmp/user-content/*/; do
               if [ -d "$dir" ]; then
                 dirname=$(basename "$dir")
@@ -273,6 +323,7 @@ jobs:
                   *) 
                     if find "$dir" -type f \( -name "*.md" -o -name "*.mdx" \) | grep -q .; then
                       cp -r "$dir" "content/docs/" 2>/dev/null || true
+                      echo "Copied directory: $dir -> content/docs/"
                     fi
                     ;;
                 esac
@@ -280,31 +331,62 @@ jobs:
             done
           fi
           
+          echo "--- content/docs/ after copy ---"
+          find content/docs -type f | head -20
+          
           # Ensure index page exists
           if [ ! -f "content/docs/index.mdx" ] && [ ! -f "content/docs/index.md" ]; then
+            echo "No index page found, creating from first doc..."
             FIRST_DOC=$(find content/docs -type f \( -name "*.md" -o -name "*.mdx" \) 2>/dev/null | sort | head -1)
             if [ -n "$FIRST_DOC" ]; then
               cp "$FIRST_DOC" content/docs/index.mdx
+              echo "Created index.mdx from: $FIRST_DOC"
             fi
           fi
           
-          # Ensure all mdx/md files have frontmatter with title
+          # Ensure all mdx/md files have frontmatter
+          echo "--- Adding frontmatter to files without it ---"
           find content/docs -type f \( -name "*.mdx" -o -name "*.md" \) | while read f; do
             if ! head -1 "$f" | grep -q "^---"; then
               filename=$(basename "$f" | sed 's/\.[^.]*$//' | sed 's/-/ /g')
-              # Capitalize first letter of each word
               title=$(echo "$filename" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
               TMPFILE=$(mktemp)
               printf '%s\n' '---' "title: $title" 'description: Documentation' '---' '' > "$TMPFILE"
               cat "$f" >> "$TMPFILE"
               mv "$TMPFILE" "$f"
+              echo "Added frontmatter to: $f (title: $title)"
             fi
           done
 
+      - name: Debug - Show final project structure
+        run: |
+          echo "========== FINAL PROJECT STRUCTURE =========="
+          echo "--- Root files ---"
+          ls -la
+          echo "--- app/ structure ---"
+          find app -type f | head -30
+          echo "--- lib/ structure ---"
+          ls -la lib/
+          echo "--- content/docs/ structure ---"
+          find content/docs -type f | head -20
+          echo "--- package.json ---"
+          cat package.json
+          echo "--- Checking page.tsx for clerk style ---"
+          echo "File exists check:"
+          ls -la 'app/docs/[[...slug]]/page.tsx' || echo "FILE NOT FOUND!"
+          echo "Content of page.tsx:"
+          cat 'app/docs/[[...slug]]/page.tsx' || echo "CANNOT READ FILE!"
+
       - name: Install dependencies and Build
         run: |
+          echo "========== INSTALL AND BUILD =========="
           npm install
+          echo "--- Installed packages ---"
+          npm list fumadocs-ui fumadocs-core fumadocs-mdx 2>/dev/null || true
+          echo "--- Starting build ---"
           npm run build
+          echo "--- Build output ---"
+          ls -la out/ | head -20
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
