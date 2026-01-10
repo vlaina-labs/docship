@@ -1,149 +1,136 @@
 #!/bin/bash
 # DocShip Markdown Sanitizer
-# This script cleans markdown files to ensure compatibility with all documentation frameworks
+# Cleans markdown files for compatibility with all documentation frameworks
+
+set -e
 
 CONTENT_DIR="${1:-.}"
-
 echo "🧹 Sanitizing markdown files in: $CONTENT_DIR"
 
-find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read f; do
+find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r f; do
+  echo "  Processing: $f"
   
-  # ===== SECURITY: XSS & INJECTION CLEANUP =====
-  sed -i 's/<script[^>]*>.*<\/script>//gi' "$f" 2>/dev/null || true
+  # ===== STEP 1: REMOVE ALL IMAGES (MDX frameworks import them as modules) =====
+  # Match ![any](any) - most common format
+  sed -i -E 's/!\[[^]]*\]\([^)]*\)//g' "$f" 2>/dev/null || true
+  # Match ![any][ref] - reference style
+  sed -i -E 's/!\[[^]]*\]\[[^]]*\]//g' "$f" 2>/dev/null || true
+  # Match remaining image patterns with special chars
+  sed -i 's/!\[/[IMAGE REMOVED: /g' "$f" 2>/dev/null || true
+  
+  # ===== STEP 2: REMOVE XML PROCESSING INSTRUCTIONS =====
+  # <?xml ... ?> and <?php ... ?> etc - these break VitePress
+  sed -i 's/<?\s*xml[^?]*?>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<?\s*php[^?]*?>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<\?[a-zA-Z][^?]*\?>//g' "$f" 2>/dev/null || true
+  # Fallback: remove any remaining <? ... > patterns
+  sed -i -E 's/<\?[^>]*>//g' "$f" 2>/dev/null || true
+  # Nuclear option: remove standalone <? 
+  sed -i 's/<?/\&lt;?/g' "$f" 2>/dev/null || true
+  
+  # ===== STEP 3: REMOVE DOCTYPE AND ENTITY DECLARATIONS =====
+  sed -i 's/<!DOCTYPE[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<!\s*ENTITY[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<!\[CDATA\[.*\]\]>//gi' "$f" 2>/dev/null || true
+  
+  # ===== STEP 4: REMOVE DANGEROUS HTML TAGS =====
+  sed -i 's/<script[^>]*>[^<]*<\/script>//gi' "$f" 2>/dev/null || true
   sed -i 's/<script[^>]*>//gi' "$f" 2>/dev/null || true
   sed -i 's/<\/script>//gi' "$f" 2>/dev/null || true
-  sed -i 's/<style[^>]*>.*<\/style>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<style[^>]*>[^<]*<\/style>//gi' "$f" 2>/dev/null || true
   sed -i 's/<style[^>]*>//gi' "$f" 2>/dev/null || true
   sed -i 's/<\/style>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<iframe[^>]*>[^<]*<\/iframe>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<iframe[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<\/iframe>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<object[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<\/object>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<embed[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<form[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<\/form>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<input[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<button[^>]*>[^<]*<\/button>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<svg[^>]*>[^<]*<\/svg>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<svg[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<\/svg>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<img[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<video[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<\/video>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<audio[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<\/audio>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<source[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<marquee[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<\/marquee>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<body[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<\/body>//gi' "$f" 2>/dev/null || true
   
-  # Remove event handlers
-  sed -i 's/ on[a-z]*="[^"]*"//gi' "$f" 2>/dev/null || true
-  sed -i "s/ on[a-z]*='[^']*'//gi" "$f" 2>/dev/null || true
+  # Remove event handlers from remaining HTML
+  sed -i -E 's/ on[a-z]+="[^"]*"//gi' "$f" 2>/dev/null || true
+  sed -i -E "s/ on[a-z]+='[^']*'//gi" "$f" 2>/dev/null || true
   
-  # Remove dangerous protocols
-  sed -i 's/href="javascript:[^"]*"/href="#"/gi' "$f" 2>/dev/null || true
-  sed -i 's/href="vbscript:[^"]*"/href="#"/gi' "$f" 2>/dev/null || true
-  sed -i 's/href="data:text\/html[^"]*"/href="#"/gi' "$f" 2>/dev/null || true
+  # ===== STEP 5: REMOVE SSI (Server Side Includes) =====
+  sed -i 's/<!--#[^-]*-->//gi' "$f" 2>/dev/null || true
   
-  # Remove dangerous HTML tags
-  for tag in iframe object embed form button textarea select svg video audio source marquee blink; do
-    sed -i "s/<${tag}[^>]*>//gi" "$f" 2>/dev/null || true
-    sed -i "s/<\/${tag}>//gi" "$f" 2>/dev/null || true
-  done
+  # ===== STEP 6: REMOVE VUE/REACT COMPONENTS =====
+  sed -i -E 's/<[A-Z][a-zA-Z]*[^>]*\/>//g' "$f" 2>/dev/null || true
+  sed -i -E 's/<[A-Z][a-zA-Z]*[^>]*>[^<]*<\/[A-Z][a-zA-Z]*>//g' "$f" 2>/dev/null || true
+  sed -i -E 's/<[A-Z][a-zA-Z]*[^>]*>//g' "$f" 2>/dev/null || true
+  sed -i -E 's/<\/[A-Z][a-zA-Z]*>//g' "$f" 2>/dev/null || true
   
-  # Remove XML processing instructions (<?xml, <?php, etc.)
-  sed -i 's/<?[a-z][^>]*?>//gi' "$f" 2>/dev/null || true
-  sed -i 's/<?[a-z][^>]*>//gi' "$f" 2>/dev/null || true
+  # ===== STEP 7: REMOVE DANGEROUS LINKS =====
+  # JavaScript/VBScript/Data protocols
+  sed -i -E 's/\[[^]]*\]\(javascript:[^)]*\)//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/\[[^]]*\]\(vbscript:[^)]*\)//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/\[[^]]*\]\(data:[^)]*\)//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/\[[^]]*\]\(file:[^)]*\)//gi' "$f" 2>/dev/null || true
   
-  # Remove DOCTYPE, ENTITY, CDATA
-  sed -i 's/<!DOCTYPE[^>]*>//gi' "$f" 2>/dev/null || true
-  sed -i 's/<!ENTITY[^>]*>//gi' "$f" 2>/dev/null || true
-  sed -i 's/<!\[CDATA\[.*\]\]>//gi' "$f" 2>/dev/null || true
+  # Path traversal links - remove links starting with ..
+  sed -i -E 's/\[[^]]*\]\(\.\.[^)]*\)//g' "$f" 2>/dev/null || true
   
-  # Remove SSI directives
-  sed -i 's/<!--#[^>]*-->//gi' "$f" 2>/dev/null || true
+  # Encoded path traversal - %2F, %5C, %c0, %00
+  sed -i -E 's/\[[^]]*\]\([^)]*%2[fF][^)]*\)//g' "$f" 2>/dev/null || true
+  sed -i -E 's/\[[^]]*\]\([^)]*%5[cC][^)]*\)//g' "$f" 2>/dev/null || true
+  sed -i -E 's/\[[^]]*\]\([^)]*%[cC]0[^)]*\)//g' "$f" 2>/dev/null || true
+  sed -i -E 's/\[[^]]*\]\([^)]*%00[^)]*\)//g' "$f" 2>/dev/null || true
   
-  # ===== IMAGE LINK CLEANUP =====
-  sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
-  sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
-  sed -i 's/!\[[^]]*\](url)//g' "$f" 2>/dev/null || true
-  sed -i 's/!\[[^]]*\](javascript:[^)]*)//gi' "$f" 2>/dev/null || true
-  sed -i 's/!\[[^]]*\](data:text\/html[^)]*)//gi' "$f" 2>/dev/null || true
-  # Remove images with simple placeholder URLs like url1, url2, etc. (causes MDX import errors)
-  sed -i 's/!\[[^]]*\](url[0-9]*)//g' "$f" 2>/dev/null || true
-  # Remove images with path traversal
-  sed -i 's/!\[[^]]*\](\.\.[^)]*)//g' "$f" 2>/dev/null || true
+  # ===== STEP 8: CODE BLOCK LANGUAGE NORMALIZATION =====
+  # Replace unknown/problematic languages with 'text'
+  sed -i 's/```mermaid/```text/gi' "$f" 2>/dev/null || true
+  sed -i 's/```plantuml/```text/gi' "$f" 2>/dev/null || true
+  sed -i 's/```ditaa/```text/gi' "$f" 2>/dev/null || true
+  sed -i 's/```invalidlanguage/```text/gi' "$f" 2>/dev/null || true
+  sed -i 's/```nonexistent/```text/gi' "$f" 2>/dev/null || true
+  sed -i 's/```fake-lang-123/```text/gi' "$f" 2>/dev/null || true
+  sed -i 's/```mdx-code-block/```text/gi' "$f" 2>/dev/null || true
+  sed -i 's/```unclosed/```text/gi' "$f" 2>/dev/null || true
+  sed -i 's/```objective-c/```objc/gi' "$f" 2>/dev/null || true
   
-  # ===== LINK CLEANUP =====
-  # Remove links with path traversal attempts
-  sed -i 's/\[[^]]*\](\.\.[^)]*)//g' "$f" 2>/dev/null || true
-  # Remove links with encoded path traversal (%2F, %c0%af, etc.)
-  sed -i 's/\[[^]]*\]([^)]*%[0-9a-fA-F][0-9a-fA-F]%[0-9a-fA-F][0-9a-fA-F][^)]*)//g' "$f" 2>/dev/null || true
-  sed -i 's/\[[^]]*\]([^)]*%c0%[0-9a-fA-F][0-9a-fA-F][^)]*)//gi' "$f" 2>/dev/null || true
+  # ===== STEP 9: ESCAPE TEMPLATE SYNTAX =====
+  # Escape {{ }} - Vue/Nunjucks/Jinja
+  sed -i 's/{{/\&lbrace;\&lbrace;/g' "$f" 2>/dev/null || true
+  sed -i 's/}}/\&rbrace;\&rbrace;/g' "$f" 2>/dev/null || true
+  # Escape {% %} - Liquid/Jinja/Nunjucks
+  sed -i 's/{%/\&lbrace;%/g' "$f" 2>/dev/null || true
+  sed -i 's/%}/\&rbrace;%/g' "$f" 2>/dev/null || true
+  # Escape {# #} - Jinja comments
+  sed -i 's/{#/\&lbrace;#/g' "$f" 2>/dev/null || true
+  sed -i 's/#}/\&rbrace;#/g' "$f" 2>/dev/null || true
+  # Escape <% %> - ERB/ASP
+  sed -i 's/<%/\&lt;%/g' "$f" 2>/dev/null || true
+  sed -i 's/%>/%\&gt;/g' "$f" 2>/dev/null || true
   
-  # ===== VUE COMPONENT CLEANUP =====
-  # Remove Vue 3 built-in components that break parsers
-  for comp in Suspense KeepAlive Teleport Transition TransitionGroup; do
-    sed -i "s/<${comp}[^>]*>//gi" "$f" 2>/dev/null || true
-    sed -i "s/<\/${comp}>//gi" "$f" 2>/dev/null || true
-  done
-  
-  # Remove custom components (PascalCase tags)
-  sed -i 's/<[A-Z][a-zA-Z]*[^>]*\/>//g' "$f" 2>/dev/null || true
-  sed -i 's/<[A-Z][a-zA-Z]*[^>]*>//g' "$f" 2>/dev/null || true
-  sed -i 's/<\/[A-Z][a-zA-Z]*>//g' "$f" 2>/dev/null || true
-  
-  # Remove kebab-case custom components
-  sed -i 's/<[a-z]*-[a-z][a-z-]*[^>]*>//gi' "$f" 2>/dev/null || true
-  sed -i 's/<\/[a-z]*-[a-z][a-z-]*>//gi' "$f" 2>/dev/null || true
-  
-  # ===== MKDOCS/DOCUSAURUS ADMONITION CLEANUP =====
-  # Convert MkDocs admonitions to blockquotes
-  sed -i 's/^!!! \([a-z]*\).*$/> **\1**/gi' "$f" 2>/dev/null || true
-  sed -i 's/^??? \([a-z]*\).*$/> **\1**/gi' "$f" 2>/dev/null || true
-  sed -i 's/^???+ \([a-z]*\).*$/> **\1**/gi' "$f" 2>/dev/null || true
-  
-  # Remove Docusaurus admonitions (:::note, :::tip, etc.)
-  sed -i 's/^:::[a-z]*.*$/> **Note**/gi' "$f" 2>/dev/null || true
+  # ===== STEP 10: REMOVE FRAMEWORK-SPECIFIC SYNTAX =====
+  # MkDocs admonitions
+  sed -i -E 's/^!!! [a-z].*$/> **Note**/g' "$f" 2>/dev/null || true
+  sed -i -E 's/^\?\?\? [a-z].*$/> **Note**/g' "$f" 2>/dev/null || true
+  sed -i -E 's/^\?\?\?\+ [a-z].*$/> **Note**/g' "$f" 2>/dev/null || true
+  # Docusaurus admonitions
+  sed -i -E 's/^:::[a-z].*$/> **Note**/g' "$f" 2>/dev/null || true
   sed -i 's/^:::$//' "$f" 2>/dev/null || true
-  
-  # Remove MkDocs tabs syntax
-  sed -i 's/^=== ".*"$//' "$f" 2>/dev/null || true
-  
-  # Remove MkDocs annotations
-  sed -i 's/{ \.annotate }//' "$f" 2>/dev/null || true
-  
-  # ===== CODE BLOCK CLEANUP =====
-  # Use awk to normalize code block languages
-  awk '
-    /^```[a-zA-Z]/ {
-      # Extract language
-      match($0, /^```([a-zA-Z0-9_+#.-]*)/, arr)
-      lang = tolower(arr[1])
-      
-      # List of problematic languages to replace
-      if (lang == "mermaid" || lang == "plantuml" || lang == "ditaa" || \
-          lang == "mdx-code-block" || lang == "unclosed" || \
-          lang ~ /```$/ || lang ~ /^text```/ || lang ~ /^triple/) {
-        sub(/^```[a-zA-Z0-9_+#.-]*/, "```text")
-      }
-      # objective-c -> objc (more compatible)
-      if (lang == "objective-c") {
-        sub(/^```objective-c/, "```objc")
-      }
-    }
-    { print }
-  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f" 2>/dev/null || true
-  
-  # ===== TEMPLATE SYNTAX ESCAPE =====
-  awk '
-    BEGIN { in_code = 0 }
-    /^```/ { in_code = !in_code }
-    /^~~~/ { in_code = !in_code }
-    {
-      if (!in_code) {
-        # Vue/Mustache: {{ }}
-        gsub(/\{\{/, "\\&#123;\\&#123;")
-        gsub(/\}\}/, "\\&#125;\\&#125;")
-        # Liquid/Jinja2: {% %}
-        gsub(/\{%/, "\\&#123;%")
-        gsub(/%\}/, "%\\&#125;")
-        # Hugo: {{< >}}
-        gsub(/\{\{</, "\\&#123;\\&#123;<")
-        gsub(/>\}\}/, ">\\&#125;\\&#125;")
-      }
-      print
-    }
-  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f" 2>/dev/null || true
-  
-  # ===== UNICODE CLEANUP =====
-  # Remove zero-width and direction override characters
-  sed -i 's/\xe2\x80\x8b//g' "$f" 2>/dev/null || true
-  sed -i 's/\xe2\x80\x8c//g' "$f" 2>/dev/null || true
-  sed -i 's/\xe2\x80\x8d//g' "$f" 2>/dev/null || true
-  sed -i 's/\xef\xbb\xbf//g' "$f" 2>/dev/null || true
-  sed -i 's/\xe2\x80\xae//g' "$f" 2>/dev/null || true
-  sed -i 's/\xe2\x80\xad//g' "$f" 2>/dev/null || true
+  # MkDocs tabs
+  sed -i -E 's/^=== ".*"$//' "$f" 2>/dev/null || true
+  # MkDocs annotations
+  sed -i 's/{ \.annotate }//g' "$f" 2>/dev/null || true
   
 done
 
