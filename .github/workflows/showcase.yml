@@ -61,10 +61,12 @@ jobs:
       - name: Backup user content
         run: |
           mkdir -p user-content
-          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} user-content/ \; 2>/dev/null || true
+          # Copy all markdown files including README.md
+          find . -maxdepth 1 -name "*.md" -exec cp {} user-content/ \; 2>/dev/null || true
+          # Copy all user directories (exclude framework repos and system dirs)
           for dir in */; do
             case "$dir" in
-              .*|node_modules/|user-content/|.docship/|fumadocs/|nextra/|docute/|docfx/|docsify/|docusaurus/|vitepress/|starlight/|rspress/|mkdocs/|vuepress/|honkit/) ;;
+              .*|node_modules/|user-content/|.docship/|fumadocs/|nextra/|docute/|docfx/|docsify/|docusaurus/|vitepress/|starlight/|rspress/|mkdocs/|vuepress/|honkit/|hexo/) ;;
               *) cp -r "$dir" user-content/ 2>/dev/null || true ;;
             esac
           done
