@@ -112,10 +112,19 @@ jobs:
           }
           CSSEOF
           
-          # Custom JS to inject external logo and GitHub icon
+          # Custom JS to inject external logo, favicon and GitHub icon
           cat > templates/custom/public/main.js << JSEOF
           export default {
             start: () => {
+              // Replace favicon with external avatar
+              let favicon = document.querySelector('link[rel="icon"]');
+              if (!favicon) {
+                favicon = document.createElement('link');
+                favicon.rel = 'icon';
+                document.head.appendChild(favicon);
+              }
+              favicon.href = '${AVATAR_URL}';
+              
               // Replace logo with external avatar
               const logo = document.querySelector('#logo');
               if (logo) {
