@@ -146,6 +146,16 @@ jobs:
           rm -rf docs/*
           cp -r /tmp/user-content/* docs/ 2>/dev/null || true
           
+          # Debug: verify docs/test content
+          echo "=== docs/test/test-framework-specific.md lines 18-28 ==="
+          sed -n '18,28p' docs/test/test-framework-specific.md 2>/dev/null || echo "File not found"
+          echo "=== All < in docs/test/test-framework-specific.md ==="
+          grep -n "<" docs/test/test-framework-specific.md 2>/dev/null | head -30 || echo "No matches"
+          
+          # Also check if there's a test/ directory at repo root that might interfere
+          echo "=== Checking repo root test/ directory ==="
+          ls -la test/ 2>/dev/null || echo "No test/ at root"
+          
           # Create index.md if needed
           if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then
             printf '%s\n' '# Welcome' '' 'Add your markdown files to get started.' > docs/index.md
