@@ -220,7 +220,6 @@ jobs:
           'use client';
           import { useState } from 'react';
           import { Check, Copy } from 'lucide-react';
-          import { cn } from '@/lib/cn';
           import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 
           export function CopyMarkdownButton({ content }: { content: string }) {
@@ -234,13 +233,11 @@ jobs:
 
             return (
               <button
-                className={cn(
-                  buttonVariants({
-                    color: 'secondary',
-                    size: 'sm',
-                    className: 'gap-2 mb-4 [&_svg]:size-3.5',
-                  }),
-                )}
+                className={buttonVariants({
+                  color: 'secondary',
+                  size: 'sm',
+                  className: 'gap-2 mb-4 [&_svg]:size-3.5',
+                })}
                 onClick={onClick}
               >
                 {checked ? <Check /> : <Copy />}
