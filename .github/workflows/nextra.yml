@@ -55,17 +55,35 @@ jobs:
       - name: Create Nextra project
         if: steps.check.outputs.initialized == 'false'
         run: |
-          npm init -y
-          npm install next react react-dom nextra nextra-theme-docs
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
           
-          mkdir -p pages
+          cat > package.json << 'EOF'
+          {
+            "name": "nextra-docs",
+            "private": true,
+            "scripts": {
+              "dev": "next",
+              "build": "next build"
+            },
+            "dependencies": {
+              "next": "^15.0.0",
+              "nextra": "^4.0.0",
+              "nextra-theme-docs": "^4.0.0",
+              "react": "^19.0.0",
+              "react-dom": "^19.0.0"
+            }
+          }
+          EOF
           
-          cat > next.config.mjs << 'EOF'
+          mkdir -p src/app/docs/[[...mdxPath]] src/content
+          
+          cat > next.config.mjs << 'CONFIGEOF'
           import nextra from 'nextra';
 
           const withNextra = nextra({
-            theme: 'nextra-theme-docs',
-            themeConfig: './theme.config.tsx',
+            contentDirBasePath: '/docs'
           });
 
           export default withNextra({
@@ -73,65 +91,119 @@ jobs:
             images: { unoptimized: true },
             basePath: process.env.BASE_PATH || '',
           });
-          EOF
-
-      - name: Configure for GitHub Pages
-        run: |
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          OWNER="${GITHUB_REPOSITORY_OWNER}"
-          AVATAR_URL="https://github.com/${OWNER}.png"
+          CONFIGEOF
           
-          cat > theme.config.tsx << EOF
-          import { useConfig } from 'nextra-theme-docs';
+          cat > mdx-components.js << 'MDXEOF'
+          import { useMDXComponents as getDocsMDXComponents } from 'nextra-theme-docs';
 
-          export default {
-            logo: (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src="${AVATAR_URL}" alt="Logo" width={24} height={24} style={{ borderRadius: '50%' }} />
-                <span>${OWNER}/${REPO_NAME}</span>
-              </span>
-            ),
-            project: {
-              link: 'https://github.com/${OWNER}/${REPO_NAME}',
-            },
-            docsRepositoryBase: 'https://github.com/${OWNER}/${REPO_NAME}',
-            footer: {
-              content: '${OWNER}/${REPO_NAME}',
-            },
-            head: (
-              <>
-                <link rel="icon" href="${AVATAR_URL}" />
-              </>
-            ),
-          };
-          EOF
-          
-          cat > pages/_meta.json << 'METAEOF'
-          {
-            "index": "Introduction"
+          const docsComponents = getDocsMDXComponents();
+
+          export function useMDXComponents(components) {
+            return {
+              ...docsComponents,
+              ...components
+            };
           }
-          METAEOF
+          MDXEOF
+          
+          cat > src/app/layout.jsx << LAYOUTEOF
+          import { Footer, Layout, Navbar } from 'nextra-theme-docs';
+          import { Head } from 'nextra/components';
+          import { getPageMap } from 'nextra/page-map';
+          import 'nextra-theme-docs/style.css';
+
+          export const metadata = {
+            title: '${OWNER}/${REPO_NAME}',
+            description: 'Documentation for ${OWNER}/${REPO_NAME}',
+            icons: {
+              icon: '${AVATAR_URL}',
+            },
+          };
+
+          export default async function RootLayout({ children }) {
+            const navbar = (
+              <Navbar
+                logo={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img src="${AVATAR_URL}" alt="Logo" width={24} height={24} style={{ borderRadius: '50%' }} />
+                    <span>${OWNER}/${REPO_NAME}</span>
+                  </div>
+                }
+              />
+            );
+            const pageMap = await getPageMap();
+            return (
+              <html lang="en" dir="ltr" suppressHydrationWarning>
+                <Head />
+                <body>
+                  <Layout
+                    navbar={navbar}
+                    footer={<Footer>${OWNER}/${REPO_NAME}</Footer>}
+                    docsRepositoryBase="https://github.com/${OWNER}/${REPO_NAME}"
+                    pageMap={pageMap}
+                  >
+                    {children}
+                  </Layout>
+                </body>
+              </html>
+            );
+          }
+          LAYOUTEOF
+          
+          cat > 'src/app/docs/[[...mdxPath]]/page.jsx' << 'PAGEEOF'
+          import { generateStaticParamsFor, importPage } from 'nextra/pages';
+          import { useMDXComponents as getMDXComponents } from '../../../../mdx-components';
+
+          export const generateStaticParams = generateStaticParamsFor('mdxPath');
+
+          export async function generateMetadata(props) {
+            const params = await props.params;
+            const { metadata } = await importPage(params.mdxPath);
+            return metadata;
+          }
+
+          const Wrapper = getMDXComponents().wrapper;
+
+          export default async function Page(props) {
+            const params = await props.params;
+            const { default: MDXContent, toc, metadata } = await importPage(params.mdxPath);
+            return (
+              <Wrapper toc={toc} metadata={metadata}>
+                <MDXContent {...props} params={params} />
+              </Wrapper>
+            );
+          }
+          PAGEEOF
+          
+          cat > src/app/page.jsx << 'HOMEPAGEEOF'
+          import { redirect } from 'next/navigation';
+
+          export default function HomePage() {
+            redirect('/docs');
+          }
+          HOMEPAGEEOF
 
       - name: Copy user content
         run: |
-          rm -f pages/index.mdx pages/index.md 2>/dev/null || true
+          rm -rf src/content/*
+          mkdir -p src/content
           
           if [ -d "/tmp/user-content" ]; then
             find /tmp/user-content -type f \( -name "*.md" -o -name "*.mdx" \) | while read f; do
               relpath="${f#/tmp/user-content/}"
               dir=$(dirname "$relpath")
-              mkdir -p "pages/$dir"
-              cp "$f" "pages/$relpath"
+              mkdir -p "src/content/$dir"
+              cp "$f" "src/content/$relpath"
             done
             
             for dir in /tmp/user-content/*/; do
               if [ -d "$dir" ]; then
                 dirname=$(basename "$dir")
                 case "$dirname" in
-                  pages|src|app|components|lib|public|node_modules) ;;
+                  src|app|pages|components|lib|public|node_modules) ;;
                   *) 
                     if find "$dir" -type f \( -name "*.md" -o -name "*.mdx" \) | grep -q .; then
-                      cp -r "$dir" "pages/" 2>/dev/null || true
+                      cp -r "$dir" "src/content/" 2>/dev/null || true
                     fi
                     ;;
                 esac
@@ -139,27 +211,21 @@ jobs:
             done
           fi
           
-          if [ ! -f "pages/index.mdx" ] && [ ! -f "pages/index.md" ]; then
-            FIRST_DOC=$(find pages -type f \( -name "*.md" -o -name "*.mdx" \) 2>/dev/null | sort | head -1)
+          if [ ! -f "src/content/index.mdx" ] && [ ! -f "src/content/index.md" ]; then
+            FIRST_DOC=$(find src/content -type f \( -name "*.md" -o -name "*.mdx" \) 2>/dev/null | sort | head -1)
             if [ -n "$FIRST_DOC" ]; then
-              cp "$FIRST_DOC" pages/index.mdx
+              cp "$FIRST_DOC" src/content/index.mdx
             else
-              printf '%s\n' '# Welcome' '' 'This is your documentation site. Add markdown files to get started.' > pages/index.mdx
+              printf '%s\n' '# Welcome' '' 'This is your documentation site. Add markdown files to get started.' > src/content/index.mdx
             fi
           fi
-          
-          find pages -type f \( -name "*.mdx" -o -name "*.md" \) | while read f; do
-            if head -1 "$f" | grep -q "^---"; then
-              :
-            fi
-          done
 
       - name: Install dependencies and Build
         env:
           BASE_PATH: /${{ github.event.repository.name }}
         run: |
           npm install
-          npm run build || npx next build
+          npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

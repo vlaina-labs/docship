@@ -160,6 +160,19 @@ Before releasing a theme, test with:
 - [ ] Delete `app/llms-full.txt` and `app/og` directories (they depend on exports not in simplified source.ts)
 - [ ] Clear template's default `content/docs/*` before copying user content (removes Hello World page)
 
+## Nextra Configuration
+
+- [ ] Nextra v4 uses App Router - structure is `src/app/` and `src/content/`
+- [ ] Requires `output: 'export'` and `images: { unoptimized: true }` for static build
+- [ ] Use `basePath` via environment variable for GitHub Pages
+- [ ] Content goes in `src/content/` directory
+- [ ] Output directory is `out`
+- [ ] Need `mdx-components.js` at project root for MDX components
+- [ ] Use `nextra-theme-docs` for documentation theme
+- [ ] Config uses `nextra()` wrapper with `contentDirBasePath` option
+- [ ] Homepage redirect to `/docs` since content is under `/docs` route
+- [ ] Nextra uses MDX - user content with `${}`, `<>`, `{}` may cause JSX parsing errors
+
 ## Multi-Language Support
 
 - [ ] VitePress/Docusaurus i18n is static - requires manual translation files
