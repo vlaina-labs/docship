@@ -33,7 +33,7 @@ jobs:
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
           for dir in */; do
             case "$dir" in
-              .*|_site/|obj/|api/|node_modules/) ;;
+              .*|_site/|obj/|api/|node_modules/|fumadocs/|nextra/|docute/|docfx/|docsify/|docusaurus/|vitepress/|starlight/|rspress/|mkdocs/) ;;
               *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
             esac
           done
@@ -114,41 +114,48 @@ jobs:
           ---
           INDEXEOF
           
-          # Create root toc.yml (top navbar) - only Docs entry
+          # Create root toc.yml (top navbar)
           cat > toc.yml << 'TOCEOF'
           - name: Docs
             href: docs/
           TOCEOF
           
-          # Create docs/toc.yml (left sidebar) - DocFX format without "items:" prefix
-          if [ ! -f "docs/toc.yml" ]; then
-            > docs/toc.yml
-            
-            # Add markdown files
-            find docs -maxdepth 1 -name "*.md" 2>/dev/null | sort | while read f; do
-              filename=$(basename "$f" .md)
-              echo "- href: $filename.md" >> docs/toc.yml
-            done
-            
-            # Add subdirectories
-            for subdir in docs/*/; do
-              if [ -d "$subdir" ]; then
-                dirname=$(basename "$subdir")
+          # Remove ALL toc.yml files in docs subdirectories (may be invalid from user content)
+          find docs -mindepth 2 -type f -name "toc.yml" -exec rm -f {} \; 2>/dev/null || true
+          find docs -mindepth 2 -type f -name "toc.md" -exec rm -f {} \; 2>/dev/null || true
+          
+          # Generate docs/toc.yml (left sidebar)
+          > docs/toc.yml
+          
+          # Add markdown files (only files with content)
+          for f in $(find docs -maxdepth 1 -name "*.md" 2>/dev/null | sort); do
+            filename=$(basename "$f" .md)
+            title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+            echo "- name: $title" >> docs/toc.yml
+            echo "  href: $filename.md" >> docs/toc.yml
+          done
+          
+          # Add subdirectories that contain md files
+          for subdir in docs/*/; do
+            if [ -d "$subdir" ]; then
+              dirname=$(basename "$subdir")
+              # Check if subdir has any md files
+              md_count=$(find "$subdir" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l)
+              if [ "$md_count" -gt 0 ]; then
                 title=$(echo "$dirname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
                 echo "- name: $title" >> docs/toc.yml
-                echo "  href: $dirname/" >> docs/toc.yml
+                echo "  items:" >> docs/toc.yml
                 
-                # Create subdirectory toc.yml
-                if [ ! -f "$subdir/toc.yml" ]; then
-                  > "$subdir/toc.yml"
-                  find "$subdir" -maxdepth 1 -name "*.md" 2>/dev/null | sort | while read f; do
-                    fname=$(basename "$f" .md)
-                    echo "- href: $fname.md" >> "$subdir/toc.yml"
-                  done
-                fi
+                # Add files as nested items
+                for f in $(find "$subdir" -maxdepth 1 -name "*.md" 2>/dev/null | sort); do
+                  fname=$(basename "$f" .md)
+                  ftitle=$(echo "$fname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                  echo "  - name: $ftitle" >> docs/toc.yml
+                  echo "    href: $dirname/$fname.md" >> docs/toc.yml
+                done
               fi
-            done
-          fi
+            fi
+          done
           
           # Fallback if docs/toc.yml is empty
           if [ ! -s "docs/toc.yml" ]; then
@@ -157,9 +164,7 @@ jobs:
 
           This is your documentation site. Add markdown files to get started.
           WELCOMEEOF
-            cat > docs/toc.yml << 'TOCEOF'
-          - href: index.md
-          TOCEOF
+            printf '%s\n' '- name: Welcome' '  href: index.md' > docs/toc.yml
           fi
 
       - name: Build DocFX
