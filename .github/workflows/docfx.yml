@@ -190,11 +190,7 @@ jobs:
           ---
           INDEXEOF
           
-          # Create root toc.yml (top navbar)
-          cat > toc.yml << 'TOCEOF'
-          - name: Docs
-            href: docs/
-          TOCEOF
+          # No root toc.yml - removes the "Docs" tab from navbar
           
           # Remove ALL toc.yml files in docs subdirectories (may be invalid from user content)
           find docs -mindepth 2 -type f -name "toc.yml" -exec rm -f {} \; 2>/dev/null || true
