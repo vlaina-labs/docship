@@ -70,6 +70,9 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   # Remove unclosed HTML comments (cause Vue EOF error)
   sed -i '/^<!--[^>]*$/d' "$f" 2>/dev/null || true
   sed -i 's/<!-- unclosed//g' "$f" 2>/dev/null || true
+  # Remove CDATA sections (not allowed in HTML context)
+  sed -i 's/<!\[CDATA\[[^]]*\]\]>//gi' "$f" 2>/dev/null || true
+  sed -i '/<!\[CDATA\[/d' "$f" 2>/dev/null || true
   
   # ===== STEP 6: REMOVE VUE/REACT COMPONENTS =====
   sed -i -E 's/<[A-Z][a-zA-Z]*[^>]*\/>//g' "$f" 2>/dev/null || true
