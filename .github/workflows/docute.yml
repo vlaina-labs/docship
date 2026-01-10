@@ -98,7 +98,7 @@ jobs:
           
           SIDEBAR=$(generate_sidebar "." "")
           
-          cat > index.html << EOF
+          cat > index.html << HTMLEOF
           <!DOCTYPE html>
           <html>
             <head>
@@ -115,7 +115,7 @@ jobs:
                 new Docute({
                   target: '#docute',
                   title: '${OWNER}/${REPO_NAME}',
-                  logo: '<img src="${AVATAR_URL}" alt="Logo" style="width:24px;height:24px;border-radius:50%;margin-right:8px;vertical-align:middle;"><span>${OWNER}/${REPO_NAME}</span>',
+                  logo: '<span style="display:flex;align-items:center;gap:8px;"><img src="${AVATAR_URL}" alt="Logo" style="width:24px;height:24px;border-radius:50%;">${OWNER}/${REPO_NAME}</span>',
                   darkThemeToggler: true,
                   nav: [
                     {
@@ -132,7 +132,7 @@ jobs:
               </script>
             </body>
           </html>
-          EOF
+          HTMLEOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
