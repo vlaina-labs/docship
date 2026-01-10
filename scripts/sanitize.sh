@@ -61,13 +61,20 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i '/<div data-x=[^"'"'"' >]/d' "$f" 2>/dev/null || true
   # Remove any tag with unquoted attributes containing special chars
   sed -i '/<[a-z]*[^>]*=[a-zA-Z]*['"'"'"<>=`]/d' "$f" 2>/dev/null || true
-  # Remove unclosed HTML tags (missing end tag)
+  # Remove unclosed HTML tags (missing end tag) - be very aggressive
   sed -i '/^<div>$/d' "$f" 2>/dev/null || true
   sed -i '/^<p>$/d' "$f" 2>/dev/null || true
   sed -i '/^<span>$/d' "$f" 2>/dev/null || true
   sed -i '/^<a href="#">$/d' "$f" 2>/dev/null || true
   sed -i '/^<br>$/d' "$f" 2>/dev/null || true
+  sed -i '/^<br\/>$/d' "$f" 2>/dev/null || true
+  sed -i '/^<br \/>$/d' "$f" 2>/dev/null || true
   sed -i '/^<hr>$/d' "$f" 2>/dev/null || true
+  sed -i '/^<hr\/>$/d' "$f" 2>/dev/null || true
+  sed -i '/^<hr \/>$/d' "$f" 2>/dev/null || true
+  sed -i '/^<img src=/d' "$f" 2>/dev/null || true
+  # Remove lines with problematic div attributes
+  sed -i '/<div data-x=/d' "$f" 2>/dev/null || true
   
   # Remove event handlers
   sed -i -E 's/ on[a-z]+="[^"]*"//gi' "$f" 2>/dev/null || true
