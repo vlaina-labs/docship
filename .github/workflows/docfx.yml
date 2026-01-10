@@ -1,0 +1,183 @@
+name: Deploy DocFX to GitHub Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install DocFX
+        run: dotnet tool install -g docfx
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|_site/|obj/|api/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Check if already initialized
+        id: check
+        run: |
+          if [ -f "docfx.json" ]; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create DocFX project
+        if: steps.check.outputs.initialized == 'false'
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          
+          cat > docfx.json << EOF
+          {
+            "build": {
+              "content": [
+                {
+                  "files": ["articles/**/*.md", "articles/**/toc.yml", "toc.yml", "*.md"]
+                }
+              ],
+              "resource": [
+                {
+                  "files": ["articles/images/**", "images/**"]
+                }
+              ],
+              "dest": "_site",
+              "globalMetadata": {
+                "_appTitle": "${OWNER}/${REPO_NAME}",
+                "_appName": "${REPO_NAME}",
+                "_appFaviconPath": "${AVATAR_URL}",
+                "_appLogoPath": "${AVATAR_URL}",
+                "_enableSearch": true
+              },
+              "template": ["default", "modern"]
+            }
+          }
+          EOF
+          
+          cat > index.md << INDEXEOF
+          ---
+          _layout: landing
+          ---
+
+          # ${OWNER}/${REPO_NAME}
+
+          Welcome to the documentation.
+
+          ## Getting Started
+
+          Browse the documentation using the sidebar.
+          INDEXEOF
+          
+          cat > toc.yml << 'TOCEOF'
+          - name: Home
+            href: index.md
+          - name: Articles
+            href: articles/
+          TOCEOF
+          
+          mkdir -p articles
+
+      - name: Copy user content
+        run: |
+          mkdir -p articles
+          
+          if [ -d "/tmp/user-content" ]; then
+            find /tmp/user-content -maxdepth 1 -type f -name "*.md" -exec cp {} articles/ \; 2>/dev/null || true
+            
+            for dir in /tmp/user-content/*/; do
+              if [ -d "$dir" ]; then
+                dirname=$(basename "$dir")
+                case "$dirname" in
+                  articles|_site|obj|api) ;;
+                  *) 
+                    cp -r "$dir" "articles/" 2>/dev/null || true
+                    ;;
+                esac
+              fi
+            done
+          fi
+          
+          if [ ! -f "articles/toc.yml" ]; then
+            echo "items:" > articles/toc.yml
+            
+            find articles -maxdepth 1 -name "*.md" 2>/dev/null | sort | while read f; do
+              filename=$(basename "$f" .md)
+              title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+              echo "- name: $title" >> articles/toc.yml
+              echo "  href: $filename.md" >> articles/toc.yml
+            done
+            
+            for subdir in articles/*/; do
+              if [ -d "$subdir" ]; then
+                dirname=$(basename "$subdir")
+                title=$(echo "$dirname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                echo "- name: $title" >> articles/toc.yml
+                echo "  href: $dirname/" >> articles/toc.yml
+                
+                if [ ! -f "$subdir/toc.yml" ]; then
+                  echo "items:" > "$subdir/toc.yml"
+                  find "$subdir" -maxdepth 1 -name "*.md" 2>/dev/null | sort | while read f; do
+                    fname=$(basename "$f" .md)
+                    ftitle=$(echo "$fname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                    echo "- name: $ftitle" >> "$subdir/toc.yml"
+                    echo "  href: $fname.md" >> "$subdir/toc.yml"
+                  done
+                fi
+              fi
+            done
+          fi
+          
+          if [ -z "$(find articles -maxdepth 1 -name '*.md' 2>/dev/null)" ]; then
+            printf '%s\n' '# Welcome' '' 'This is your documentation site. Add markdown files to get started.' > articles/index.md
+            echo "items:" > articles/toc.yml
+            echo "- name: Welcome" >> articles/toc.yml
+            echo "  href: index.md" >> articles/toc.yml
+          fi
+
+      - name: Build DocFX
+        run: docfx build docfx.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
