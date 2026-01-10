@@ -71,10 +71,16 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i -E 's/<div[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show|v-html|v-text|v-pre|v-cloak|v-once)[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<[a-z]+[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show|v-html|v-text|v-pre|v-cloak|v-once)[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<[a-z]+[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show)[^>]*>//gi' "$f" 2>/dev/null || true
-  # Remove tags with Vue shorthand syntax (:prop, @event, #slot) - with or without quotes
-  sed -i -E 's/<div[^>]*(:[a-z]+|@[a-z]+|#[a-z]+)(="[^"]*")?[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
-  sed -i -E 's/<[a-z]+[^>]*(:[a-z]+|@[a-z]+|#[a-z]+)(="[^"]*")?[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
-  sed -i -E 's/<[a-z]+[^>]* (:[a-z]+|@[a-z]+|#[a-z]+)[^>]*>//gi' "$f" 2>/dev/null || true
+  # Remove tags with Vue shorthand syntax - #slot (v-slot shorthand) - SIMPLE PATTERNS
+  sed -i 's/<div #[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<span #[^>]*>[^<]*<\/span>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<p #[^>]*>[^<]*<\/p>//gi' "$f" 2>/dev/null || true
+  sed -i 's/<a #[^>]*>[^<]*<\/a>//gi' "$f" 2>/dev/null || true
+  # Remove tags with :prop or @event
+  sed -i -E 's/<[a-z]+[^>]*:[a-z]+="[^"]*"[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+[^>]*@[a-z]+="[^"]*"[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+[^>]*:[a-z]+="[^"]*"[^>]*>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+[^>]*@[a-z]+="[^"]*"[^>]*>//gi' "$f" 2>/dev/null || true
   # Remove Angular directives (*ngIf, *ngFor, [ngClass], (click), [(ngModel)])
   sed -i -E 's/<[a-z]+[^>]*(\*ng[A-Z][a-z]+|\[ng[A-Z][a-z]+\]|\([a-z]+\)|\[\([a-z]+\)\])[^>]*>//gi' "$f" 2>/dev/null || true
   
