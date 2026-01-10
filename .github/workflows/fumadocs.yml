@@ -303,10 +303,14 @@ jobs:
           if [ ! -f "content/docs/index.mdx" ] && [ ! -f "content/docs/index.md" ]; then
             FIRST_DOC=$(find content/docs -type f \( -name "*.md" -o -name "*.mdx" \) 2>/dev/null | sort | head -1)
             if [ -n "$FIRST_DOC" ]; then
-              cp "$FIRST_DOC" content/docs/index.mdx
+              if head -1 "$FIRST_DOC" | grep -q "^---"; then
+                awk '/^---$/{c++} c==2{found=1; next} found' "$FIRST_DOC" > content/docs/index.mdx
+              else
+                cp "$FIRST_DOC" content/docs/index.mdx
+              fi
               TMPFILE=$(mktemp)
               printf '%s\n' '---' 'title: Welcome' 'description: Documentation' 'index: true' '---' '' > "$TMPFILE"
-              tail -n +6 content/docs/index.mdx >> "$TMPFILE" 2>/dev/null || cat content/docs/index.mdx >> "$TMPFILE"
+              cat content/docs/index.mdx >> "$TMPFILE"
               mv "$TMPFILE" content/docs/index.mdx
             else
               printf '%s\n' '---' 'title: Welcome' 'description: Welcome to the documentation' 'index: true' '---' '' '# Welcome' '' 'This is your documentation site. Add markdown files to get started.' > content/docs/index.mdx
