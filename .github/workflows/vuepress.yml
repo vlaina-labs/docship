@@ -68,7 +68,8 @@ jobs:
               "build": "vuepress build docs"
             },
             "devDependencies": {
-              "vuepress": "^1.9.10"
+              "vuepress": "^1.9.10",
+              "@vuepress/plugin-back-to-top": "^1.9.10"
             }
           }
           EOF
@@ -94,11 +95,15 @@ jobs:
               lastUpdated: 'Last Updated',
               repo: '${OWNER}/${REPO_NAME}',
               repoLabel: 'GitHub',
-              editLinks: false
+              editLinks: false,
+              smoothScroll: true
             },
             markdown: {
               lineNumbers: true
-            }
+            },
+            plugins: [
+              ['@vuepress/back-to-top', true]
+            ]
           }
           CONFIGEOF
           
@@ -140,6 +145,26 @@ jobs:
           
           .custom-footer a:hover
             text-decoration underline
+          
+          // Green scrollbar like VuePress official site
+          ::-webkit-scrollbar
+            width 8px
+            height 8px
+          
+          ::-webkit-scrollbar-track
+            background #f1f1f1
+          
+          ::-webkit-scrollbar-thumb
+            background #3eaf7c
+            border-radius 4px
+          
+          ::-webkit-scrollbar-thumb:hover
+            background #2c9c69
+          
+          // Firefox scrollbar
+          *
+            scrollbar-width thin
+            scrollbar-color #3eaf7c #f1f1f1
           STYLEOF
 
       - name: Copy user content
