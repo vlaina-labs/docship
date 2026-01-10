@@ -107,6 +107,7 @@ jobs:
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           
+          # Create root index.md (homepage)
           if [ ! -f "index.md" ]; then
             FIRST_DOC=$(find docs -maxdepth 1 -type f -name "*.md" 2>/dev/null | sort | head -1)
             if [ -n "$FIRST_DOC" ]; then
@@ -124,6 +125,7 @@ jobs:
             fi
           fi
           
+          # Create root toc.yml (top navbar)
           if [ ! -f "toc.yml" ]; then
             cat > toc.yml << 'TOCEOF'
           - name: Docs
@@ -131,16 +133,17 @@ jobs:
           TOCEOF
           fi
           
+          # Create docs/toc.yml (left sidebar) - DocFX format without "items:" prefix
           if [ ! -f "docs/toc.yml" ]; then
-            echo "items:" > docs/toc.yml
+            > docs/toc.yml
             
+            # Add markdown files
             find docs -maxdepth 1 -name "*.md" 2>/dev/null | sort | while read f; do
               filename=$(basename "$f" .md)
-              title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
-              echo "- name: $title" >> docs/toc.yml
-              echo "  href: $filename.md" >> docs/toc.yml
+              echo "- href: $filename.md" >> docs/toc.yml
             done
             
+            # Add subdirectories
             for subdir in docs/*/; do
               if [ -d "$subdir" ]; then
                 dirname=$(basename "$subdir")
@@ -148,29 +151,27 @@ jobs:
                 echo "- name: $title" >> docs/toc.yml
                 echo "  href: $dirname/" >> docs/toc.yml
                 
+                # Create subdirectory toc.yml
                 if [ ! -f "$subdir/toc.yml" ]; then
-                  echo "items:" > "$subdir/toc.yml"
+                  > "$subdir/toc.yml"
                   find "$subdir" -maxdepth 1 -name "*.md" 2>/dev/null | sort | while read f; do
                     fname=$(basename "$f" .md)
-                    ftitle=$(echo "$fname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
-                    echo "- name: $ftitle" >> "$subdir/toc.yml"
-                    echo "  href: $fname.md" >> "$subdir/toc.yml"
+                    echo "- href: $fname.md" >> "$subdir/toc.yml"
                   done
                 fi
               fi
             done
           fi
           
-          if [ ! -s "docs/toc.yml" ] || [ "$(cat docs/toc.yml)" = "items:" ]; then
+          # Fallback if docs/toc.yml is empty
+          if [ ! -s "docs/toc.yml" ]; then
             cat > docs/index.md << 'WELCOMEEOF'
           # Welcome
 
           This is your documentation site. Add markdown files to get started.
           WELCOMEEOF
             cat > docs/toc.yml << 'TOCEOF'
-          items:
-          - name: Welcome
-            href: index.md
+          - href: index.md
           TOCEOF
           fi
 
