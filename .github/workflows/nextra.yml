@@ -130,6 +130,7 @@ jobs:
                     <span>${OWNER}/${REPO_NAME}</span>
                   </div>
                 }
+                projectLink="https://github.com/${OWNER}/${REPO_NAME}"
               />
             );
             const pageMap = await getPageMap();
