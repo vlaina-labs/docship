@@ -75,8 +75,12 @@ jobs:
           # Debug: show lines around 272 after sanitization
           echo "=== Lines 265-280 of test-parser-killer.md after sanitization ==="
           sed -n '265,280p' /tmp/user-content/test/test-parser-killer.md 2>/dev/null || echo "File not found"
-          echo "=== All lines containing < ==="
+          echo "=== All lines containing < in test-parser-killer.md ==="
           grep -n "<" /tmp/user-content/test/test-parser-killer.md 2>/dev/null | head -30 || echo "No matches"
+          echo "=== Lines 15-30 of test-framework-specific.md ==="
+          sed -n '15,30p' /tmp/user-content/test/test-framework-specific.md 2>/dev/null || echo "File not found"
+          echo "=== All lines containing < in test-framework-specific.md ==="
+          grep -n "<" /tmp/user-content/test/test-framework-specific.md 2>/dev/null | head -50 || echo "No matches"
 
       - name: Setup VitePress project
         env:
