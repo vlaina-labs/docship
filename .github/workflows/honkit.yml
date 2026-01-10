@@ -208,6 +208,10 @@ jobs:
           function processFile(filePath) {
             let content = fs.readFileSync(filePath, 'utf8');
             
+            // Remove existing favicon links
+            content = content.replace(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*>/gi, '');
+            content = content.replace(/<link[^>]*rel=["']apple-touch-icon[^"']*["'][^>]*>/gi, '');
+            
             // Inject favicon
             const faviconHtml = `<link rel="icon" href="${avatarUrl}"><link rel="shortcut icon" href="${avatarUrl}">`;
             content = content.replace(/<head>/i, `<head>${faviconHtml}`);
