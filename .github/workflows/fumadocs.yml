@@ -167,6 +167,7 @@ jobs:
           import { getMDXComponents } from '@/mdx-components';
           import type { Metadata } from 'next';
           import { createRelativeLink } from 'fumadocs-ui/mdx';
+          import { CopyMarkdownButton } from '@/components/copy-markdown';
 
           export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
             const params = await props.params;
@@ -174,6 +175,7 @@ jobs:
             if (!page) notFound();
 
             const MDX = page.data.body;
+            const markdown = await page.data.getText('raw');
 
             return (
               <DocsPage
@@ -185,6 +187,7 @@ jobs:
               >
                 <DocsTitle>{page.data.title}</DocsTitle>
                 <DocsDescription>{page.data.description}</DocsDescription>
+                <CopyMarkdownButton content={markdown} />
                 <DocsBody>
                   <MDX
                     components={getMDXComponents({
@@ -209,6 +212,41 @@ jobs:
               title: page.data.title,
               description: page.data.description,
             };
+          }
+          EOF
+          
+          mkdir -p components
+          cat > 'components/copy-markdown.tsx' << 'EOF'
+          'use client';
+          import { useState } from 'react';
+          import { Check, Copy } from 'lucide-react';
+          import { cn } from '@/lib/cn';
+          import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+
+          export function CopyMarkdownButton({ content }: { content: string }) {
+            const [checked, setChecked] = useState(false);
+
+            const onClick = async () => {
+              await navigator.clipboard.writeText(content);
+              setChecked(true);
+              setTimeout(() => setChecked(false), 2000);
+            };
+
+            return (
+              <button
+                className={cn(
+                  buttonVariants({
+                    color: 'secondary',
+                    size: 'sm',
+                    className: 'gap-2 mb-4 [&_svg]:size-3.5',
+                  }),
+                )}
+                onClick={onClick}
+              >
+                {checked ? <Check /> : <Copy />}
+                Copy Markdown
+              </button>
+            );
           }
           EOF
 
