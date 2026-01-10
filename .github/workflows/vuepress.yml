@@ -68,8 +68,7 @@ jobs:
               "build": "vuepress build docs"
             },
             "devDependencies": {
-              "vuepress": "^1.9.10",
-              "@vuepress/theme-vue": "^1.9.10"
+              "vuepress": "^1.9.10"
             }
           }
           EOF
@@ -82,7 +81,6 @@ jobs:
             title: '${OWNER}/${REPO_NAME}',
             description: 'Documentation for ${OWNER}/${REPO_NAME}',
             base: '/${REPO_NAME}/',
-            theme: '@vuepress/vue',
             head: [
               ['link', { rel: 'icon', href: '${AVATAR_URL}' }]
             ],
@@ -105,12 +103,57 @@ jobs:
           }
           CONFIGEOF
           
-          # Create enhanceApp.js to add footer
+          # Create enhanceApp.js to add footer and back-to-top
           cat > docs/.vuepress/enhanceApp.js << 'ENHANCEOF'
           export default ({ router }) => {
             if (typeof window !== 'undefined') {
+              // Create back-to-top button with progress circle
+              const createBackToTop = () => {
+                if (document.querySelector('.back-to-top-wrapper')) return;
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'back-to-top-wrapper';
+                wrapper.innerHTML = `
+                  <svg class="progress-circle" viewBox="0 0 100 100">
+                    <circle class="progress-bg" cx="50" cy="50" r="45" fill="none" stroke="#eee" stroke-width="6"/>
+                    <circle class="progress-bar" cx="50" cy="50" r="45" fill="none" stroke="#3eaf7c" stroke-width="6" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+                  </svg>
+                  <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="#3eaf7c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"></line>
+                    <polyline points="5 12 12 5 19 12"></polyline>
+                  </svg>
+                `;
+                wrapper.style.cssText = 'position:fixed;bottom:2rem;right:2rem;width:50px;height:50px;cursor:pointer;z-index:100;opacity:0;transition:opacity 0.3s;pointer-events:none;';
+                
+                wrapper.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+                document.body.appendChild(wrapper);
+                
+                const progressBar = wrapper.querySelector('.progress-bar');
+                const circumference = 2 * Math.PI * 45;
+                progressBar.style.strokeDasharray = circumference;
+                progressBar.style.strokeDashoffset = circumference;
+                
+                window.addEventListener('scroll', () => {
+                  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                  const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+                  const progress = scrollTop / scrollHeight;
+                  
+                  progressBar.style.strokeDashoffset = circumference * (1 - progress);
+                  
+                  if (scrollTop > 300) {
+                    wrapper.style.opacity = '1';
+                    wrapper.style.pointerEvents = 'auto';
+                  } else {
+                    wrapper.style.opacity = '0';
+                    wrapper.style.pointerEvents = 'none';
+                  }
+                });
+              };
+              
               router.afterEach(() => {
                 setTimeout(() => {
+                  createBackToTop();
+                  
                   // Add footer if not exists
                   if (!document.querySelector('.custom-footer')) {
                     const footer = document.createElement('div');
@@ -163,6 +206,24 @@ jobs:
           *
             scrollbar-width thin
             scrollbar-color #3eaf7c #f1f1f1
+          
+          // Back to top button styles
+          .back-to-top-wrapper
+            display flex
+            align-items center
+            justify-content center
+            background white
+            border-radius 50%
+            box-shadow 0 2px 12px rgba(0,0,0,0.1)
+          
+          .back-to-top-wrapper .progress-circle
+            position absolute
+            width 100%
+            height 100%
+          
+          .back-to-top-wrapper .arrow-icon
+            width 24px
+            height 24px
           STYLEOF
 
       - name: Copy user content
