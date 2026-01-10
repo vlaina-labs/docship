@@ -73,7 +73,6 @@ jobs:
               "globalMetadata": {
                 "_appTitle": "${OWNER}/${REPO_NAME}",
                 "_appName": "${OWNER}/${REPO_NAME}",
-                "_appFaviconPath": "${AVATAR_URL}",
                 "_appFooter": "<span>Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> · <a href=\"https://github.com/dotnet/docfx\" target=\"_blank\">DocFX</a></span>",
                 "_enableSearch": true,
                 "_disableContribution": true
@@ -116,14 +115,24 @@ jobs:
           cat > templates/custom/public/main.js << JSEOF
           export default {
             start: () => {
-              // Replace favicon with external avatar
-              let favicon = document.querySelector('link[rel="icon"]');
-              if (!favicon) {
-                favicon = document.createElement('link');
-                favicon.rel = 'icon';
-                document.head.appendChild(favicon);
+              // Replace all favicon links with external avatar
+              const faviconSelectors = [
+                'link[rel="icon"]',
+                'link[rel="shortcut icon"]',
+                'link[rel="apple-touch-icon"]'
+              ];
+              faviconSelectors.forEach(selector => {
+                const link = document.querySelector(selector);
+                if (link) link.href = '${AVATAR_URL}';
+              });
+              
+              // Also add a new favicon if none exists
+              if (!document.querySelector('link[rel="icon"]')) {
+                const newFavicon = document.createElement('link');
+                newFavicon.rel = 'icon';
+                newFavicon.href = '${AVATAR_URL}';
+                document.head.appendChild(newFavicon);
               }
-              favicon.href = '${AVATAR_URL}';
               
               // Replace logo with external avatar
               const logo = document.querySelector('#logo');
