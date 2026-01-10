@@ -202,6 +202,15 @@ jobs:
           if [ -f "scripts/sanitize.sh" ]; then
             ./scripts/sanitize.sh .
           fi
+          
+          # Debug: check what's on line 22 after sanitize
+          echo "=== docs/test/test-framework-specific.md lines 18-26 AFTER sanitize ==="
+          sed -n '18,26p' docs/test/test-framework-specific.md
+          echo "=== grep for #header ==="
+          grep -n "#header" docs/test/test-framework-specific.md || echo "Not found"
+          echo "=== grep for '<div #' ==="
+          grep -n '<div #' docs/test/test-framework-specific.md || echo "Not found"
+          
           npx vitepress build
 
       - name: Setup Pages
