@@ -126,13 +126,13 @@ jobs:
           sed -i "s|AVATAR_URL_PLACEHOLDER|${AVATAR_URL}|g" lib/layout.shared.tsx
           sed -i "s|TITLE_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" lib/layout.shared.tsx
           
-          # Update lib/source.ts to use basePath
-          cat > lib/source.ts << SOURCEEOF
+          # Update lib/source.ts - baseUrl should NOT include basePath (Next.js handles it)
+          cat > lib/source.ts << 'SOURCEEOF'
           import { docs } from 'fumadocs-mdx:collections/server';
           import { type InferPageType, loader } from 'fumadocs-core/source';
 
           export const source = loader({
-            baseUrl: '/${REPO_NAME}/docs',
+            baseUrl: '/docs',
             source: docs.toFumadocsSource(),
             plugins: [],
           });
@@ -142,14 +142,14 @@ jobs:
 
             return {
               segments,
-              url: '/${REPO_NAME}/og/docs/' + segments.join('/'),
+              url: `/og/docs/${segments.join('/')}`,
             };
           }
 
           export async function getLLMText(page: InferPageType<typeof source>) {
             const processed = await page.data.getText('processed');
 
-            return '# ' + page.data.title + '\n\n' + processed;
+            return `# ${page.data.title}\n\n${processed}`;
           }
           SOURCEEOF
           
@@ -186,28 +186,14 @@ jobs:
           sed -i "s|TITLE_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" app/layout.tsx
           sed -i "s|AVATAR_URL_PLACEHOLDER|${AVATAR_URL}|g" app/layout.tsx
           
-          # Update app/(home)/page.tsx with custom homepage
-          cat > app/\(home\)/page.tsx << HOMEPAGEEOF
-          import Link from 'next/link';
+          # Update app/(home)/page.tsx to redirect to /docs
+          cat > app/\(home\)/page.tsx << 'HOMEPAGEEOF'
+          import { redirect } from 'next/navigation';
 
           export default function HomePage() {
-            return (
-              <div className="flex flex-col justify-center text-center flex-1">
-                <h1 className="text-2xl font-bold mb-4">TITLE_PLACEHOLDER</h1>
-                <p>
-                  You can open{' '}
-                  <Link href="/REPO_NAME_PLACEHOLDER/docs" className="font-medium underline">
-                    /docs
-                  </Link>{' '}
-                  and see the documentation.
-                </p>
-              </div>
-            );
+            redirect('/docs');
           }
           HOMEPAGEEOF
-          
-          sed -i "s|TITLE_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" app/\(home\)/page.tsx
-          sed -i "s|REPO_NAME_PLACEHOLDER|${REPO_NAME}|g" app/\(home\)/page.tsx
 
       - name: Copy user content
         run: |
