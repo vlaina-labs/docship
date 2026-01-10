@@ -1,0 +1,284 @@
+name: Deploy HonKit to GitHub Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-honkit-${{ runner.os }}
+          restore-keys: npm-honkit-
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" ! -name "SUMMARY.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|node_modules/|_book/|fumadocs/|nextra/|docute/|docfx/|docsify/|docusaurus/|vitepress/|starlight/|rspress/|mkdocs/|vuepress/|honkit/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Check if already initialized
+        id: check
+        run: |
+          if [ -f "package.json" ] && grep -q "honkit" package.json 2>/dev/null; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create HonKit project
+        if: steps.check.outputs.initialized == 'false'
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          
+          cat > package.json << 'EOF'
+          {
+            "name": "honkit-docs",
+            "private": true,
+            "scripts": {
+              "build": "honkit build",
+              "serve": "honkit serve"
+            },
+            "devDependencies": {
+              "honkit": "^6.1.4"
+            }
+          }
+          EOF
+          
+          # Create book.json config
+          cat > book.json << BOOKEOF
+          {
+            "title": "${OWNER}/${REPO_NAME}",
+            "description": "Documentation for ${OWNER}/${REPO_NAME}",
+            "author": "${OWNER}",
+            "language": "en",
+            "links": {
+              "sidebar": {
+                "GitHub": "${GITHUB_URL}"
+              }
+            },
+            "plugins": ["-sharing", "-fontsettings"],
+            "pluginsConfig": {}
+          }
+          BOOKEOF
+
+      - name: Copy user content
+        run: |
+          if [ -d "/tmp/user-content" ]; then
+            # Copy markdown files
+            find /tmp/user-content -maxdepth 1 -type f -name "*.md" -exec cp {} . \; 2>/dev/null || true
+            
+            # Copy directories
+            for dir in /tmp/user-content/*/; do
+              if [ -d "$dir" ]; then
+                dirname=$(basename "$dir")
+                case "$dirname" in
+                  _book|node_modules) ;;
+                  *) cp -r "$dir" . 2>/dev/null || true ;;
+                esac
+              fi
+            done
+          fi
+          
+          # HonKit uses README.md as homepage, rename index.md if needed
+          if [ -f "index.md" ] && [ ! -f "README.md" ]; then
+            mv index.md README.md
+          elif [ -f "index.md" ] && [ -f "README.md" ]; then
+            mv index.md home.md
+          fi
+
+      - name: Generate SUMMARY.md
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          
+          # Only generate if SUMMARY.md doesn't exist
+          if [ ! -f "SUMMARY.md" ]; then
+            cat > SUMMARY.md << 'SUMMARYEOF'
+          # Summary
+
+          SUMMARYEOF
+            
+            # Add README as first entry
+            if [ -f "README.md" ]; then
+              echo "* [Home](README.md)" >> SUMMARY.md
+            fi
+            
+            # Add other markdown files
+            for f in $(find . -maxdepth 1 -name "*.md" ! -name "README.md" ! -name "SUMMARY.md" ! -name "GLOSSARY.md" 2>/dev/null | sort); do
+              filename=$(basename "$f" .md)
+              title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+              echo "* [$title]($filename.md)" >> SUMMARY.md
+            done
+            
+            # Add subdirectories
+            for subdir in */; do
+              if [ -d "$subdir" ]; then
+                dirname=$(basename "$subdir")
+                case "$dirname" in
+                  _book|node_modules|_layouts|.*) ;;
+                  *)
+                    # Check if subdir has any md files
+                    md_count=$(find "$subdir" -maxdepth 1 -name "*.md" 2>/dev/null | wc -l)
+                    if [ "$md_count" -gt 0 ]; then
+                      title=$(echo "$dirname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                      echo "" >> SUMMARY.md
+                      echo "## $title" >> SUMMARY.md
+                      echo "" >> SUMMARY.md
+                      
+                      # Add README first if exists
+                      if [ -f "$subdir/README.md" ]; then
+                        echo "* [$title]($dirname/README.md)" >> SUMMARY.md
+                      fi
+                      
+                      # Add other files
+                      for f in $(find "$subdir" -maxdepth 1 -name "*.md" ! -name "README.md" ! -name "SUMMARY.md" 2>/dev/null | sort); do
+                        fname=$(basename "$f" .md)
+                        ftitle=$(echo "$fname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                        echo "* [$ftitle]($dirname/$fname.md)" >> SUMMARY.md
+                      done
+                    fi
+                    ;;
+                esac
+              fi
+            done
+          fi
+          
+          # Create README.md if not exists
+          if [ ! -f "README.md" ]; then
+            cat > README.md << READMEOF
+          # Welcome
+
+          This is the documentation for ${OWNER}/${REPO_NAME}.
+
+          Add markdown files to get started.
+          READMEOF
+          fi
+
+      - name: Install dependencies and Build
+        run: |
+          npm install
+          npx honkit build
+
+      - name: Inject custom branding
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          
+          # Create injection script
+          cat > /tmp/inject.js << 'SCRIPTEOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          const owner = process.env.OWNER;
+          const repoName = process.env.REPO_NAME;
+          const avatarUrl = process.env.AVATAR_URL;
+          const githubUrl = process.env.GITHUB_URL;
+          
+          function processFile(filePath) {
+            let content = fs.readFileSync(filePath, 'utf8');
+            
+            // Inject favicon
+            const faviconHtml = `<link rel="icon" href="${avatarUrl}"><link rel="shortcut icon" href="${avatarUrl}">`;
+            content = content.replace(/<head>/i, `<head>${faviconHtml}`);
+            
+            // Inject custom CSS
+            const customCss = `<style>
+              .book-header .custom-logo { display: inline-flex; align-items: center; }
+              .book-header .custom-logo img { width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; }
+              .book-summary .custom-footer { padding: 10px 15px; font-size: 12px; color: #7e888b; border-top: 1px solid #e8e8e8; text-align: center; margin-top: 20px; }
+              .book-summary .custom-footer a { color: #4183c4; text-decoration: none; }
+              .book-summary .custom-footer a:hover { text-decoration: underline; }
+            </style>`;
+            content = content.replace(/<\/head>/i, `${customCss}</head>`);
+            
+            // Inject logo - find the book title area
+            const logoHtml = `<span class="custom-logo"><img src="${avatarUrl}" alt="logo">${owner}/${repoName}</span>`;
+            // Replace the title in header
+            content = content.replace(/<a href="\.?\/?index\.html"[^>]*>([^<]*)<\/a>/i, 
+              `<a href="index.html" class="custom-link">${logoHtml}</a>`);
+            
+            // Inject footer before closing nav
+            const footerHtml = `<div class="custom-footer">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/honkit/honkit" target="_blank">HonKit</a></div>`;
+            content = content.replace(/<\/nav>\s*<\/div>\s*<div class="book-body">/i, 
+              `${footerHtml}</nav></div><div class="book-body">`);
+            
+            fs.writeFileSync(filePath, content);
+          }
+          
+          function walkDir(dir) {
+            const files = fs.readdirSync(dir);
+            for (const file of files) {
+              const filePath = path.join(dir, file);
+              const stat = fs.statSync(filePath);
+              if (stat.isDirectory()) {
+                walkDir(filePath);
+              } else if (file.endsWith('.html')) {
+                processFile(filePath);
+              }
+            }
+          }
+          
+          walkDir('_book');
+          SCRIPTEOF
+          
+          OWNER="$OWNER" REPO_NAME="$REPO_NAME" AVATAR_URL="$AVATAR_URL" GITHUB_URL="$GITHUB_URL" node /tmp/inject.js
+
+      - name: Fix base path for GitHub Pages
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          
+          # Update all relative paths to include repo name
+          find _book -name "*.html" | while read f; do
+            sed -i "s|href=\"gitbook/|href=\"/${REPO_NAME}/gitbook/|g" "$f"
+            sed -i "s|src=\"gitbook/|src=\"/${REPO_NAME}/gitbook/|g" "$f"
+          done
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _book
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
