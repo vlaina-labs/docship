@@ -33,7 +33,7 @@ jobs:
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
           for dir in */; do
             case "$dir" in
-              .*|_site/|obj/|api/) ;;
+              .*|_site/|obj/|api/|node_modules/) ;;
               *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
             esac
           done
@@ -59,12 +59,13 @@ jobs:
             "build": {
               "content": [
                 {
-                  "files": ["articles/**/*.md", "articles/**/toc.yml", "toc.yml", "*.md"]
+                  "files": ["**/*.{md,yml}"],
+                  "exclude": ["_site/**", "obj/**", "README.md"]
                 }
               ],
               "resource": [
                 {
-                  "files": ["articles/images/**", "images/**"]
+                  "files": ["**/images/**", "**/media/**"]
                 }
               ],
               "dest": "_site",
@@ -72,7 +73,6 @@ jobs:
                 "_appTitle": "${OWNER}/${REPO_NAME}",
                 "_appName": "${REPO_NAME}",
                 "_appFaviconPath": "${AVATAR_URL}",
-                "_appLogoPath": "${AVATAR_URL}",
                 "_enableSearch": true
               },
               "template": ["default", "modern"]
@@ -80,65 +80,73 @@ jobs:
           }
           EOF
           
-          cat > index.md << INDEXEOF
-          ---
-          _layout: landing
-          ---
+          mkdir -p docs
 
+      - name: Copy user content
+        run: |
+          mkdir -p docs
+          
+          if [ -d "/tmp/user-content" ]; then
+            find /tmp/user-content -maxdepth 1 -type f -name "*.md" -exec cp {} docs/ \; 2>/dev/null || true
+            
+            for dir in /tmp/user-content/*/; do
+              if [ -d "$dir" ]; then
+                dirname=$(basename "$dir")
+                case "$dirname" in
+                  docs|_site|obj|api) ;;
+                  *) 
+                    cp -r "$dir" "docs/" 2>/dev/null || true
+                    ;;
+                esac
+              fi
+            done
+          fi
+
+      - name: Generate index and toc
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          
+          if [ ! -f "index.md" ]; then
+            FIRST_DOC=$(find docs -maxdepth 1 -type f -name "*.md" 2>/dev/null | sort | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              cp "$FIRST_DOC" index.md
+            else
+              cat > index.md << INDEXEOF
           # ${OWNER}/${REPO_NAME}
 
           Welcome to the documentation.
 
           ## Getting Started
 
-          Browse the documentation using the sidebar.
+          Browse the documentation using the navigation.
           INDEXEOF
-          
-          cat > toc.yml << 'TOCEOF'
-          - name: Home
-            href: index.md
-          - name: Articles
-            href: articles/
-          TOCEOF
-          
-          mkdir -p articles
-
-      - name: Copy user content
-        run: |
-          mkdir -p articles
-          
-          if [ -d "/tmp/user-content" ]; then
-            find /tmp/user-content -maxdepth 1 -type f -name "*.md" -exec cp {} articles/ \; 2>/dev/null || true
-            
-            for dir in /tmp/user-content/*/; do
-              if [ -d "$dir" ]; then
-                dirname=$(basename "$dir")
-                case "$dirname" in
-                  articles|_site|obj|api) ;;
-                  *) 
-                    cp -r "$dir" "articles/" 2>/dev/null || true
-                    ;;
-                esac
-              fi
-            done
+            fi
           fi
           
-          if [ ! -f "articles/toc.yml" ]; then
-            echo "items:" > articles/toc.yml
+          if [ ! -f "toc.yml" ]; then
+            cat > toc.yml << 'TOCEOF'
+          - name: Docs
+            href: docs/
+          TOCEOF
+          fi
+          
+          if [ ! -f "docs/toc.yml" ]; then
+            echo "items:" > docs/toc.yml
             
-            find articles -maxdepth 1 -name "*.md" 2>/dev/null | sort | while read f; do
+            find docs -maxdepth 1 -name "*.md" 2>/dev/null | sort | while read f; do
               filename=$(basename "$f" .md)
               title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
-              echo "- name: $title" >> articles/toc.yml
-              echo "  href: $filename.md" >> articles/toc.yml
+              echo "- name: $title" >> docs/toc.yml
+              echo "  href: $filename.md" >> docs/toc.yml
             done
             
-            for subdir in articles/*/; do
+            for subdir in docs/*/; do
               if [ -d "$subdir" ]; then
                 dirname=$(basename "$subdir")
                 title=$(echo "$dirname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
-                echo "- name: $title" >> articles/toc.yml
-                echo "  href: $dirname/" >> articles/toc.yml
+                echo "- name: $title" >> docs/toc.yml
+                echo "  href: $dirname/" >> docs/toc.yml
                 
                 if [ ! -f "$subdir/toc.yml" ]; then
                   echo "items:" > "$subdir/toc.yml"
@@ -153,11 +161,17 @@ jobs:
             done
           fi
           
-          if [ -z "$(find articles -maxdepth 1 -name '*.md' 2>/dev/null)" ]; then
-            printf '%s\n' '# Welcome' '' 'This is your documentation site. Add markdown files to get started.' > articles/index.md
-            echo "items:" > articles/toc.yml
-            echo "- name: Welcome" >> articles/toc.yml
-            echo "  href: index.md" >> articles/toc.yml
+          if [ ! -s "docs/toc.yml" ] || [ "$(cat docs/toc.yml)" = "items:" ]; then
+            cat > docs/index.md << 'WELCOMEEOF'
+          # Welcome
+
+          This is your documentation site. Add markdown files to get started.
+          WELCOMEEOF
+            cat > docs/toc.yml << 'TOCEOF'
+          items:
+          - name: Welcome
+            href: index.md
+          TOCEOF
           fi
 
       - name: Build DocFX
