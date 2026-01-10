@@ -148,6 +148,8 @@ Before releasing a theme, test with:
 | `Export doesn't exist in target module` | Simplified source.ts missing exports | Delete files that depend on removed exports (e.g., `app/og`, `app/llms-full.txt`) |
 | `fatal: No url found for submodule path` | Downloaded repo folder treated as submodule | Add folder to `.gitignore` or `git rm -r --cached folder` |
 | `shallow cloned, latest modified time not presented` | GitHub Actions shallow clone | Warning only, can ignore or use `fetch-depth: 0` |
+| `InvalidTocFile: not a valid TOC File` (DocFX) | Empty or malformed toc.yml | Delete invalid toc.yml from subdirectories |
+| Logo/favicon not showing (DocFX) | External URL in `_appLogoPath`/`_appFaviconPath` | Use custom template JS to inject external URLs |
 
 ## Fumadocs Configuration
 
@@ -178,6 +180,63 @@ Before releasing a theme, test with:
 - [ ] Homepage redirect to `/docs` since content is under `/docs` route
 - [ ] Nextra uses MDX - user content with `${}`, `<>`, `{}` may cause JSX parsing errors
 - [ ] Set `staticImage: false` to prevent build failures from invalid image paths
+
+## DocFX Configuration
+
+- [ ] DocFX is a .NET-based documentation framework - uses `dotnet tool install -g docfx`
+- [ ] Content goes in `docs/` directory
+- [ ] Output directory is `_site`
+- [ ] Config file is `docfx.json`
+- [ ] Uses `toc.yml` for navigation structure:
+  - Root `toc.yml`: top navbar tabs
+  - `docs/toc.yml`: left sidebar
+- [ ] `_appLogoPath` and `_appFaviconPath` do NOT support external URLs - need custom template
+- [ ] Use custom template with JavaScript to inject external avatar as logo/favicon
+- [ ] Remove root `toc.yml` to hide navbar tabs (e.g., "Docs" tab) when only one section
+- [ ] Use `redirect_url` frontmatter in `index.md` to redirect homepage to docs
+- [ ] Set `_disableContribution: true` to hide "Edit this page" link
+- [ ] Set `_appFooter` to customize or remove footer
+- [ ] Sidebar toc.yml format: `- name: Title` + `href: file.md` (not `items:` prefix)
+- [ ] Nested items use `items:` array under parent
+- [ ] Delete invalid `toc.yml` files from user content subdirectories
+- [ ] Exclude framework source folders in backup (fumadocs/, nextra/, docute/, etc.)
+
+### DocFX Custom Template Pattern
+
+For external URLs (logo, favicon, GitHub icon), create custom template:
+```
+templates/custom/public/main.css  - styles
+templates/custom/public/main.js   - JavaScript to inject elements
+```
+
+Add to docfx.json template list:
+```json
+"template": ["default", "modern", "templates/custom"]
+```
+
+JavaScript pattern for external resources:
+```javascript
+export default {
+  start: () => {
+    // Replace favicon
+    const favicon = document.querySelector('link[rel="icon"]');
+    if (favicon) favicon.href = 'EXTERNAL_URL';
+    
+    // Replace logo
+    const logo = document.querySelector('#logo');
+    if (logo) logo.src = 'EXTERNAL_URL';
+    
+    // Add GitHub icon to navbar
+    const navbar = document.querySelector('.navbar-nav .dropdown');
+    if (navbar) {
+      const link = document.createElement('a');
+      link.href = 'GITHUB_URL';
+      link.innerHTML = '<svg>...</svg>';
+      navbar.parentNode.insertBefore(link, navbar);
+    }
+  }
+}
+```
 
 ## Docute Configuration
 
@@ -267,6 +326,7 @@ Example HTML:
 | Fumadocs | `nav.title` as JSX with `<img>` + `<span>` |
 | Nextra | `Navbar logo` prop as JSX |
 | Docute | `logo` as Vue template string |
+| DocFX | Custom template JS to replace `#logo` element |
 | Starlight | `logo.src` + `title` |
 
 ### Sidebar Generation
