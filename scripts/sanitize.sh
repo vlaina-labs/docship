@@ -54,34 +54,22 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   
   # Remove malformed HTML tags (duplicate attributes, missing quotes, etc.)
   # These cause Vue compiler errors - be aggressive and remove entire lines
-  # Use awk to remove HTML tags outside code blocks
-  awk '
-    BEGIN { in_code = 0 }
-    /^```/ { in_code = !in_code; print; next }
-    /^~~~/ { in_code = !in_code; print; next }
-    {
-      if (!in_code) {
-        # Remove lines starting with HTML tags that are problematic
-        if ($0 ~ /^<div[^>]*>$/) { next }
-        if ($0 ~ /^<p>$/) { next }
-        if ($0 ~ /^<span>$/) { next }
-        if ($0 ~ /^<a [^>]*>$/) { next }
-        if ($0 ~ /^<br/) { next }
-        if ($0 ~ /^<hr/) { next }
-        if ($0 ~ /^<img /) { next }
-        if ($0 ~ /^<div class=/) { next }
-        if ($0 ~ /^<div data-x=/) { next }
-        # Remove lines with duplicate attributes (class="..."class=)
-        if ($0 ~ /class="[^"]*"class=/) { next }
-        # Remove lines with single quotes class
-        if ($0 ~ /class=\047/) { next }
-        # Remove lines with unquoted attributes
-        if ($0 ~ /class=[a-z]/) { next }
-        if ($0 ~ /data-x=[a-z]/) { next }
-      }
-      print
-    }
-  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f" 2>/dev/null || true
+  # Remove lines with duplicate class attributes
+  sed -i '/class="[^"]*"class=/d' "$f" 2>/dev/null || true
+  # Remove lines with single-quoted class
+  sed -i "/class='/d" "$f" 2>/dev/null || true
+  # Remove lines with unquoted class
+  sed -i '/class=[a-z]/d' "$f" 2>/dev/null || true
+  # Remove lines with problematic data-x attributes
+  sed -i '/data-x=/d' "$f" 2>/dev/null || true
+  # Remove unclosed HTML tags
+  sed -i '/^<div>$/d' "$f" 2>/dev/null || true
+  sed -i '/^<p>$/d' "$f" 2>/dev/null || true
+  sed -i '/^<span>$/d' "$f" 2>/dev/null || true
+  sed -i '/^<a href=/d' "$f" 2>/dev/null || true
+  sed -i '/^<br/d' "$f" 2>/dev/null || true
+  sed -i '/^<hr/d' "$f" 2>/dev/null || true
+  sed -i '/^<img /d' "$f" 2>/dev/null || true
   
   # Remove event handlers
   sed -i -E 's/ on[a-z]+="[^"]*"//gi' "$f" 2>/dev/null || true
