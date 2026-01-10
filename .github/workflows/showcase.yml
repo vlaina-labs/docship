@@ -119,8 +119,9 @@ jobs:
       - name: Checkout showcase assets
         uses: actions/checkout@v4
         with:
-          sparse-checkout: docship/showcase
-          path: repo
+          repository: NekoTick/docship
+          sparse-checkout: showcase
+          path: docship-repo
 
       - name: Create showcase site
         run: |
@@ -130,8 +131,8 @@ jobs:
           mkdir -p _site
           
           # Copy CSS and JS assets
-          cp repo/docship/showcase/style.css _site/
-          cp repo/docship/showcase/script.js _site/
+          cp docship-repo/showcase/style.css _site/
+          cp docship-repo/showcase/script.js _site/
           
           # Collect all build-* artifacts
           for d in artifacts/build-*/; do
