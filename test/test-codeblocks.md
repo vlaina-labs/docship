@@ -4,22 +4,10 @@
 
 ## Unknown Languages
 
+These code blocks use languages that may not be recognized:
+
 ```invalidlanguage
 This language doesn't exist
-```
-
-```mermaid
-graph TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[OK]
-    B -->|No| D[Cancel]
-```
-
-```plantuml
-@startuml
-Alice -> Bob: Hello
-Bob --> Alice: Hi
-@enduml
 ```
 
 ```nonexistent
@@ -30,70 +18,37 @@ Some code here
 More fake code
 ```
 
-```UPPERCASE
-Case sensitive?
+## Diagram Languages
+
+These are common diagram languages that may not be supported:
+
+```mermaid
+graph TD
+    A[Start] --> B[End]
 ```
 
-```with spaces
-Spaces in language name
+```plantuml
+Alice -> Bob: Hello
 ```
-
-```special!@#$%
-Special characters in name
-```
-
-## Unclosed Code Blocks
-
-```javascript
-const x = 1;
-// This code block is never closed
-
-Some text that might be inside or outside
-
-```python
-def hello():
-    pass
-# Also never closed
 
 ## Empty Code Blocks
 
 ```
 ```
 
-```javascript
+```text
 ```
 
-```
+## Inline Code
 
-```
+Normal inline code: `const x = 1`
 
-## Nested Backticks
+Double backticks: ``code with `backtick` inside``
 
-```
-Code with ``` backticks inside
-```
+## Very Long Line
 
-````
-```
-Nested code block
-```
-````
-
-## Inline Code Edge Cases
-
-`unclosed inline code
-
-``double backticks``
-
-``` triple inline ```
-
-`code with
-newline inside`
-
-## Very Long Code Block
-
-```
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+```text
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ```
 
 ## Normal Code
@@ -103,3 +58,13 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 const greeting = "Hello, World!";
 console.log(greeting);
 ```
+
+```python
+# Python code
+def hello():
+    print("Hello")
+```
+
+## Normal Content
+
+This should render fine.

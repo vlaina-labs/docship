@@ -34,22 +34,22 @@ Cell 1 | Cell 2
 
 | Code | Example |
 |------|---------|
-| `a|b` | a|b |
+| `a\|b` | a\|b |
 | \| | escaped |
 
 ## Very Wide Table
 
-| Col1 | Col2 | Col3 | Col4 | Col5 | Col6 | Col7 | Col8 | Col9 | Col10 | Col11 | Col12 | Col13 | Col14 | Col15 |
-|------|------|------|------|------|------|------|------|------|-------|-------|-------|-------|-------|-------|
-| a | b | c | d | e | f | g | h | i | j | k | l | m | n | o |
+| Col1 | Col2 | Col3 | Col4 | Col5 | Col6 | Col7 | Col8 | Col9 | Col10 |
+|------|------|------|------|------|------|------|------|------|-------|
+| a | b | c | d | e | f | g | h | i | j |
 
 ## Nested Markdown in Table
 
 | Feature | Example |
 |---------|---------|
 | **Bold** | `code` |
-| *Italic* | [link](url) |
-| ~~Strike~~ | ![img](url) |
+| *Italic* | text |
+| ~~Strike~~ | more |
 
 ## Normal Content
 

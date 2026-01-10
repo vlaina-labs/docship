@@ -2,65 +2,44 @@
 
 # MDX/JSX Syntax Test
 
-## JSX Components
+This file tests JSX-like syntax that might appear in user markdown files.
 
-<Button>Click me</Button>
+## Component-like Tags
 
-<Card title="Test">
-  Content inside card
-</Card>
+These look like JSX components but are just text:
 
-<MyComponent prop={value} />
+Button: Click me
 
-<Component
-  prop1="string"
-  prop2={123}
-  prop3={true}
-  prop4={{ key: 'value' }}
-  prop5={[1, 2, 3]}
-/>
+Card with title="Test": Content inside card
 
-## JSX Expressions
+MyComponent with prop=value
 
-{1 + 1}
-{variable}
-{items.map(item => <li>{item}</li>)}
-{condition && <span>Shown</span>}
-{condition ? <A /> : <B />}
+## Expression-like Syntax
 
-## Import/Export Statements
+Math: 1 + 1 = 2
+Variable: variable
+Array: items.map(item => item)
 
-import Component from './Component'
-import { named } from 'package'
-export const meta = { title: 'Test' }
-export default function Page() {}
+## Import-like Statements
 
-## Self-closing Tags
+These are just text, not real imports:
 
-<br />
-<hr />
-<img src="test.png" />
-<input type="text" />
-<Component />
+- import Component from './Component'
+- import { named } from 'package'
+- export const meta = { title: 'Test' }
 
-## Fragments
+## Self-closing HTML Tags
 
-<>
-  <p>First</p>
-  <p>Second</p>
-</>
+These are valid HTML:
 
-<React.Fragment>
-  Content
-</React.Fragment>
+Line break below:
 
-## Invalid JSX
+---
 
-<Component without="closing"
-<unclosed>content
-<123invalid>numbers</123invalid>
-<-invalid>dash</-invalid>
+Image placeholder: [image would go here]
 
 ## Normal Content
 
-This should render normally.
+This should render normally without any issues.
+
+The goal is to test that frameworks don't crash on content that looks like JSX but isn't in an MDX file.

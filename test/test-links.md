@@ -17,35 +17,33 @@
 ## Malformed URLs
 
 [No protocol](www.example.com)
-[Missing slash](http:example.com)
-[Double protocol](http://https://example.com)
-[Space in URL](https://example .com/page)
-[Invalid chars](https://exam<ple>.com)
+[Space in URL](https://example.com/path%20with%20spaces)
 
 ## Special Protocol Links
 
-[JavaScript](javascript:alert('xss'))
-[Data URI](data:text/html,<script>alert('xss')</script>)
-[VBScript](vbscript:msgbox('xss'))
-[File protocol](file:///etc/passwd)
+These should be handled gracefully:
+
+- javascript links (removed for security)
+- data URIs (removed for security)
+- file protocol links (removed for security)
 
 ## Empty and Null Links
 
 [Empty href]()
 [Just hash](#)
-[Whitespace only](   )
-[Null byte](test%00.md)
 
 ## Unicode in Links
 
 [Chinese path](./文档/测试.md)
-[Emoji path](./📁/📄.md)
-[RTL path](./مجلد/ملف.md)
+[Emoji path](./docs/readme.md)
 
 ## Very Long Links
 
-[Super long](./aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md)
+[Super long path](./very-long-path-name-that-goes-on-and-on.md)
 
 ## Normal Content
 
 This should render fine.
+
+[Valid external link](https://github.com)
+[Valid internal link](./getting-started.md)

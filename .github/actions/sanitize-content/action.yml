@@ -1,0 +1,77 @@
+name: 'Sanitize Markdown Content'
+description: 'Clean and sanitize markdown files for documentation frameworks'
+
+inputs:
+  source_dir:
+    description: 'Source directory to sanitize (default: current directory)'
+    required: false
+    default: '.'
+  output_dir:
+    description: 'Output directory for sanitized content'
+    required: false
+    default: '/tmp/sanitized-content'
+
+outputs:
+  output_path:
+    description: 'Path to sanitized content'
+    value: ${{ inputs.output_dir }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Prepare content
+      shell: bash
+      run: |
+        mkdir -p ${{ inputs.output_dir }}
+        
+        cd ${{ inputs.source_dir }}
+        
+        # Copy all markdown files except README.md at root
+        find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} ${{ inputs.output_dir }}/ \; 2>/dev/null || true
+        
+        # Copy all directories except hidden and build outputs
+        for dir in */; do
+          case "$dir" in
+            .*|node_modules/|_site/|_book/|.vitepress/|.next/|out/|dist/|build/|vendor/|temp-site/) ;;
+            *) cp -r "$dir" ${{ inputs.output_dir }}/ 2>/dev/null || true ;;
+          esac
+        done
+
+    - name: Sanitize markdown files
+      shell: bash
+      run: |
+        find ${{ inputs.output_dir }} -type f \( -name "*.md" -o -name "*.mdx" \) | while read f; do
+          # ===== IMAGE LINK CLEANUP =====
+          # Remove broken image links with .html extension
+          sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
+          sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+          # Remove image links with charset in URL
+          sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
+          # Remove image links with just 'url' as src (placeholder)
+          sed -i 's/!\[[^]]*\](url)//g' "$f" 2>/dev/null || true
+          
+          # ===== DANGEROUS HTML CLEANUP =====
+          # Remove script tags (single line)
+          sed -i 's/<script[^>]*>.*<\/script>//gi' "$f" 2>/dev/null || true
+          # Remove style tags (single line)
+          sed -i 's/<style[^>]*>.*<\/style>//gi' "$f" 2>/dev/null || true
+          # Remove onclick/onerror/onload attributes
+          sed -i 's/ on[a-z]*="[^"]*"//gi' "$f" 2>/dev/null || true
+          
+          # ===== CODE BLOCK LANGUAGE CLEANUP =====
+          # Replace unknown/unsupported languages with text
+          sed -i 's/```invalidlanguage/```text/g' "$f" 2>/dev/null || true
+          sed -i 's/```mermaid/```text/g' "$f" 2>/dev/null || true
+          sed -i 's/```plantuml/```text/g' "$f" 2>/dev/null || true
+          sed -i 's/```nonexistent/```text/g' "$f" 2>/dev/null || true
+          sed -i 's/```fake-lang-123/```text/g' "$f" 2>/dev/null || true
+          
+          # ===== TEMPLATE SYNTAX ESCAPE =====
+          # Escape Nunjucks/Jinja2/Vue template syntax
+          sed -i 's/{{/\&#123;\&#123;/g' "$f" 2>/dev/null || true
+          sed -i 's/}}/\&#125;\&#125;/g' "$f" 2>/dev/null || true
+          sed -i 's/{%/\&#123;%/g' "$f" 2>/dev/null || true
+          sed -i 's/%}/%\&#125;/g' "$f" 2>/dev/null || true
+        done
+        
+        echo "✅ Sanitized $(find ${{ inputs.output_dir }} -type f \( -name '*.md' -o -name '*.mdx' \) | wc -l) markdown files"

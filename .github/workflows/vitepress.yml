@@ -49,11 +49,16 @@ jobs:
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
           for dir in */; do
             case "$dir" in
-              .*) ;;
-              node_modules) ;;
+              .*|node_modules/) ;;
               *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
             esac
           done
+
+      - name: Download and run sanitizer
+        run: |
+          curl -sL https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh -o /tmp/sanitize.sh
+          chmod +x /tmp/sanitize.sh
+          /tmp/sanitize.sh /tmp/user-content
 
       - name: Setup VitePress project
         env:
@@ -62,9 +67,7 @@ jobs:
           npm init -y
           npm install vitepress --save-dev
           
-          mkdir -p .vitepress
-          mkdir -p .vitepress/theme
-          mkdir -p docs
+          mkdir -p .vitepress/theme docs
           
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}/"
@@ -84,16 +87,10 @@ jobs:
             themeConfig: {
               siteTitle: '${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}',
               logo: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
-              search: {
-                provider: 'local'
-              },
-              nav: [
-                { text: 'GitHub', link: 'https://github.com/${GITHUB_REPOSITORY}' }
-              ],
+              search: { provider: 'local' },
+              nav: [{ text: 'GitHub', link: 'https://github.com/${GITHUB_REPOSITORY}' }],
               sidebar: 'auto',
-              socialLinks: [
-                { icon: 'github', link: 'https://github.com/${GITHUB_REPOSITORY_OWNER}' }
-              ]
+              socialLinks: [{ icon: 'github', link: 'https://github.com/${GITHUB_REPOSITORY_OWNER}' }]
             }
           }
           CONFIGEOF
@@ -104,18 +101,14 @@ jobs:
           
           cat > .vitepress/theme/index.js << 'THEMEEOF'
           import DefaultTheme from 'vitepress/theme'
-          
           export default {
             extends: DefaultTheme,
-            enhanceApp({ app, router }) {
+            enhanceApp({ router }) {
               if (typeof window !== 'undefined') {
-                const repoUrl = 'https://github.com/${GITHUB_REPOSITORY}'
+                const repoUrl = 'https://github.com/REPO_PLACEHOLDER'
                 const updateLink = () => {
                   const link = document.querySelector('.VPNavBarTitle a')
-                  if (link) {
-                    link.href = repoUrl
-                    link.target = '_blank'
-                  }
+                  if (link) { link.href = repoUrl; link.target = '_blank' }
                 }
                 setTimeout(updateLink, 100)
                 router.onAfterRouteChanged = updateLink
@@ -123,97 +116,50 @@ jobs:
             }
           }
           THEMEEOF
-          
-          sed -i "s|\${GITHUB_REPOSITORY}|${GITHUB_REPOSITORY}|g" .vitepress/theme/index.js
+          sed -i "s|REPO_PLACEHOLDER|${GITHUB_REPOSITORY}|g" .vitepress/theme/index.js
 
       - name: Copy user content
         run: |
           cp -r /tmp/user-content/* docs/ 2>/dev/null || true
           
-          # Clean broken image links from markdown files
-          find docs -name "*.md" -type f | while read f; do
-            # Remove image links with .html extension (broken links)
-            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
-            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
-            # Remove image links with charset in URL
-            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
-            # Remove script and style tags
-            sed -i 's/<script[^>]*>.*<\/script>//gi' "$f" 2>/dev/null || true
-            sed -i 's/<style[^>]*>.*<\/style>//gi' "$f" 2>/dev/null || true
-            sed -i 's/<invalid-tag>/<invalid-tag\/>/gi' "$f" 2>/dev/null || true
-            # Convert unclosed div/span to self-closing or remove
-            sed -i 's/<div>/<div><!-- -->/g' "$f" 2>/dev/null || true
-            sed -i 's/<span>/<span><!-- -->/g' "$f" 2>/dev/null || true
-            # Replace unknown code block languages with text
-            sed -i 's/```invalidlanguage/```text/g' "$f" 2>/dev/null || true
-            sed -i 's/```mermaid/```text/g' "$f" 2>/dev/null || true
-          done
-          
+          # Create index.md if needed
           if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then
-            echo "# Welcome" > docs/index.md
-            echo "" >> docs/index.md
-            echo "Add your markdown files to get started." >> docs/index.md
-          else
-            if [ ! -f "docs/index.md" ]; then
-              if [ -f "docs/README.md" ]; then
-                mv docs/README.md docs/index.md
-              else
-                FIRST_DOC=$(find docs -name "*.md" -type f | sort | head -1)
-                if [ -n "$FIRST_DOC" ]; then
-                  cp "$FIRST_DOC" docs/index.md
-                fi
-              fi
+            printf '%s\n' '# Welcome' '' 'Add your markdown files to get started.' > docs/index.md
+          elif [ ! -f "docs/index.md" ]; then
+            if [ -f "docs/README.md" ]; then
+              mv docs/README.md docs/index.md
+            else
+              FIRST_DOC=$(find docs -name "*.md" -type f | sort | head -1)
+              [ -n "$FIRST_DOC" ] && cp "$FIRST_DOC" docs/index.md
             fi
           fi
 
       - name: Generate sidebar
         run: |
-          cat > generate-sidebar.js << 'SIDEBAREOF'
-          const fs = require('fs');
-          const path = require('path');
-          
-          function generateSidebar(dir, basePath = '/') {
+          cat > generate-sidebar.js << 'EOF'
+          const fs = require('fs'), path = require('path');
+          function gen(dir, base = '/') {
             const items = [];
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            
-            entries.sort((a, b) => {
-              if (a.isDirectory() && !b.isDirectory()) return 1;
-              if (!a.isDirectory() && b.isDirectory()) return -1;
-              return a.name.localeCompare(b.name);
-            });
-            
-            for (const entry of entries) {
-              if (entry.name.startsWith('.') || entry.name.startsWith('_')) continue;
-              
-              const fullPath = path.join(dir, entry.name);
-              
-              if (entry.isDirectory()) {
-                const children = generateSidebar(fullPath, `${basePath}${entry.name}/`);
-                if (children.length > 0) {
-                  items.push({
-                    text: entry.name.charAt(0).toUpperCase() + entry.name.slice(1),
-                    collapsed: false,
-                    items: children
-                  });
+            fs.readdirSync(dir, { withFileTypes: true })
+              .sort((a, b) => (a.isDirectory() === b.isDirectory()) ? a.name.localeCompare(b.name) : a.isDirectory() ? 1 : -1)
+              .forEach(e => {
+                if (e.name.startsWith('.') || e.name.startsWith('_')) return;
+                const full = path.join(dir, e.name);
+                if (e.isDirectory()) {
+                  const children = gen(full, `${base}${e.name}/`);
+                  if (children.length) items.push({ text: e.name.charAt(0).toUpperCase() + e.name.slice(1), collapsed: false, items: children });
+                } else if (e.name.endsWith('.md') && e.name !== 'index.md') {
+                  const name = e.name.replace('.md', '');
+                  items.push({ text: name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' '), link: `${base}${name}` });
                 }
-              } else if (entry.name.endsWith('.md') && entry.name !== 'index.md') {
-                const name = entry.name.replace('.md', '');
-                items.push({
-                  text: name.charAt(0).toUpperCase() + name.slice(1).replace(/-/g, ' '),
-                  link: `${basePath}${name}`
-                });
-              }
-            }
+              });
             return items;
           }
-          
-          const sidebar = generateSidebar('./docs');
-          const configPath = '.vitepress/config.js';
-          let config = fs.readFileSync(configPath, 'utf8');
+          const sidebar = gen('./docs');
+          let config = fs.readFileSync('.vitepress/config.js', 'utf8');
           config = config.replace("sidebar: 'auto'", `sidebar: ${JSON.stringify(sidebar, null, 2)}`);
-          fs.writeFileSync(configPath, config);
-          SIDEBAREOF
-          
+          fs.writeFileSync('.vitepress/config.js', config);
+          EOF
           node generate-sidebar.js
 
       - name: Build

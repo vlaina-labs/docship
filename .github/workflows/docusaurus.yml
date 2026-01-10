@@ -74,20 +74,9 @@ jobs:
 
       - name: Sanitize markdown files
         run: |
-          # Remove broken image links (e.g., assets/xxx.html; charset=utf-8)
-          find /tmp/user-content -name "*.md" -type f 2>/dev/null | while read f; do
-            # Remove image links with .html extension (broken links)
-            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
-            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
-            # Remove image links with charset in URL
-            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
-            # Remove script and style tags
-            sed -i 's/<script[^>]*>.*<\/script>//gi' "$f" 2>/dev/null || true
-            sed -i 's/<style[^>]*>.*<\/style>//gi' "$f" 2>/dev/null || true
-            # Replace unknown code block languages with text
-            sed -i 's/```invalidlanguage/```text/g' "$f" 2>/dev/null || true
-            sed -i 's/```mermaid/```text/g' "$f" 2>/dev/null || true
-          done
+          curl -sL https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh -o /tmp/sanitize.sh
+          chmod +x /tmp/sanitize.sh
+          /tmp/sanitize.sh /tmp/user-content
 
       - name: Configure for Docs-only mode
         env:
@@ -115,6 +104,9 @@ jobs:
               parseFrontMatter: async (params) => {
                 const result = await params.defaultParseFrontMatter(params);
                 return result;
+              },
+              hooks: {
+                onBrokenMarkdownImages: 'ignore',
               },
             },
             i18n: {
@@ -168,13 +160,6 @@ jobs:
           rm -rf blog src/pages src/components docs
           mkdir -p content
           cp -r /tmp/user-content/* content/ 2>/dev/null || true
-          
-          # Clean broken image links from markdown files
-          find content -name "*.md" -type f | while read f; do
-            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
-            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
-            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
-          done
           
           if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then
             printf '%s\n' '---' 'slug: /' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > content/index.md

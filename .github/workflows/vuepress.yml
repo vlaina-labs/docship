@@ -49,10 +49,16 @@ jobs:
           find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
           for dir in */; do
             case "$dir" in
-              .*|node_modules/|.vuepress/|fumadocs/|nextra/|docute/|docfx/|docsify/|docusaurus/|vitepress/|starlight/|rspress/|mkdocs/|vuepress/) ;;
+              .*|node_modules/|.vuepress/) ;;
               *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
             esac
           done
+
+      - name: Sanitize markdown content
+        run: |
+          curl -sL https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh -o /tmp/sanitize.sh
+          chmod +x /tmp/sanitize.sh
+          /tmp/sanitize.sh /tmp/user-content
 
       - name: Check if already initialized
         id: check
@@ -233,21 +239,6 @@ jobs:
           READMEOF
             fi
           fi
-          
-          # Clean broken/dangerous content from markdown files
-          find docs -name "*.md" -type f | while read f; do
-            # Remove image links with .html extension (broken links)
-            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
-            sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
-            # Remove image links with charset in URL
-            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
-            # Remove script/style tags
-            sed -i 's/<script[^>]*>.*<\/script>//gi' "$f" 2>/dev/null || true
-            sed -i 's/<style[^>]*>.*<\/style>//gi' "$f" 2>/dev/null || true
-            # Replace unknown code block languages
-            sed -i 's/```invalidlanguage/```text/g' "$f" 2>/dev/null || true
-            sed -i 's/```mermaid/```text/g' "$f" 2>/dev/null || true
-          done
 
       - name: Generate sidebar config
         run: |
