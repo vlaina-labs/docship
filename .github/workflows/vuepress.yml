@@ -69,7 +69,7 @@ jobs:
             },
             "devDependencies": {
               "vuepress": "^1.9.10",
-              "@vuepress/plugin-back-to-top": "^1.9.10"
+              "@vuepress/theme-vue": "^1.9.10"
             }
           }
           EOF
@@ -82,6 +82,7 @@ jobs:
             title: '${OWNER}/${REPO_NAME}',
             description: 'Documentation for ${OWNER}/${REPO_NAME}',
             base: '/${REPO_NAME}/',
+            theme: '@vuepress/vue',
             head: [
               ['link', { rel: 'icon', href: '${AVATAR_URL}' }]
             ],
@@ -100,10 +101,7 @@ jobs:
             },
             markdown: {
               lineNumbers: true
-            },
-            plugins: [
-              ['@vuepress/back-to-top', true]
-            ]
+            }
           }
           CONFIGEOF
           
