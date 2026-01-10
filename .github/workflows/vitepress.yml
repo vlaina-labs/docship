@@ -206,10 +206,14 @@ jobs:
           # Debug: check what's on line 22 after sanitize
           echo "=== docs/test/test-framework-specific.md lines 18-26 AFTER sanitize ==="
           sed -n '18,26p' docs/test/test-framework-specific.md
-          echo "=== grep for #header ==="
-          grep -n "#header" docs/test/test-framework-specific.md || echo "Not found"
-          echo "=== grep for '<div #' ==="
-          grep -n '<div #' docs/test/test-framework-specific.md || echo "Not found"
+          echo "=== Total lines in file ==="
+          wc -l docs/test/test-framework-specific.md
+          echo "=== Line 22 specifically ==="
+          sed -n '22p' docs/test/test-framework-specific.md
+          echo "=== Check for any file with Duplicate attribute pattern ==="
+          grep -rn '<div #' . --include="*.md" 2>/dev/null | head -10 || echo "None found"
+          echo "=== Clear any VitePress cache ==="
+          rm -rf .vitepress/cache node_modules/.vite
           
           npx vitepress build
 
