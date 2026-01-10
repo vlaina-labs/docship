@@ -13,571 +13,336 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  discover:
+  prepare:
     runs-on: ubuntu-latest
     outputs:
-      frameworks: ${{ steps.discover.outputs.frameworks }}
-      repo_name: ${{ steps.info.outputs.repo_name }}
-      owner: ${{ steps.info.outputs.owner }}
+      frameworks: ${{ steps.list.outputs.result }}
     steps:
-      - name: Checkout your repo
-        uses: actions/checkout@v4
-
-      - name: Checkout docship
-        uses: actions/checkout@v4
-        with:
-          repository: NekoTick/docship
-          path: .docship
-
-      - name: Get repo info
-        id: info
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { repository: NekoTick/docship, path: .docship }
+      - id: list
         run: |
-          echo "repo_name=${GITHUB_REPOSITORY#*/}" >> $GITHUB_OUTPUT
-          echo "owner=${GITHUB_REPOSITORY_OWNER}" >> $GITHUB_OUTPUT
-
-      - name: Discover frameworks
-        id: discover
-        run: |
-          FRAMEWORKS="["
-          FIRST=true
-          for f in .docship/.github/workflows/*.yml; do
-            name=$(basename "$f" .yml)
-            case "$name" in
-              showcase|deploy|docsify|docute) ;;  # docsify/docute built in combine stage
-              *)
-                if [ "$FIRST" = true ]; then
-                  FRAMEWORKS="$FRAMEWORKS\"$name\""
-                  FIRST=false
-                else
-                  FRAMEWORKS="$FRAMEWORKS,\"$name\""
-                fi
-                ;;
-            esac
-          done
-          FRAMEWORKS="$FRAMEWORKS]"
-          echo "frameworks=$FRAMEWORKS" >> $GITHUB_OUTPUT
-          echo "Found frameworks: $FRAMEWORKS"
-
-      - name: Backup user content
-        run: |
-          mkdir -p user-content
-          # Copy all markdown files including README.md
-          find . -maxdepth 1 -name "*.md" -exec cp {} user-content/ \; 2>/dev/null || true
-          # Copy all user directories (exclude framework repos and system dirs)
-          for dir in */; do
-            case "$dir" in
-              .*|node_modules/|user-content/|.docship/|fumadocs/|nextra/|docute/|docfx/|docsify/|docusaurus/|vitepress/|starlight/|rspress/|mkdocs/|vuepress/|honkit/|hexo/) ;;
-              *) cp -r "$dir" user-content/ 2>/dev/null || true ;;
-            esac
-          done
-          if [ -z "$(ls -A user-content 2>/dev/null)" ]; then
-            echo "# Welcome" > user-content/index.md
-          fi
-
-      - name: Upload user content
-        uses: actions/upload-artifact@v4
-        with:
-          name: user-content
-          path: user-content/
-          retention-days: 1
+          RESULT=$(ls .docship/.github/workflows/*.yml | xargs -n1 basename | sed 's/.yml//' | grep -vE '^(showcase|deploy)$' | jq -Rsc 'split("\n")|map(select(.!=""))')
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+      - run: |
+          mkdir -p /tmp/repo
+          rsync -av --exclude='.git' --exclude='.docship' --exclude='node_modules' --exclude='.github' . /tmp/repo/
+      - uses: actions/upload-artifact@v4
+        with: { name: repo, path: /tmp/repo/, retention-days: 1 }
 
   build:
-    needs: discover
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        framework: ${{ fromJson(needs.discover.outputs.frameworks) }}
+        framework: ${{ fromJson(needs.prepare.outputs.frameworks) }}
     steps:
-      - name: Download user content
-        uses: actions/download-artifact@v4
-        with:
-          name: user-content
-          path: /tmp/user-content
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup .NET
+      - uses: actions/download-artifact@v4
+        with: { name: repo, path: . }
+      - uses: actions/checkout@v4
+        with: { repository: NekoTick/docship, path: .docship }
+      - uses: actions/setup-node@v4
+        if: "!contains('mkdocs-material,docfx', matrix.framework)"
+        with: { node-version: 20 }
+      - uses: actions/setup-python@v5
+        if: matrix.framework == 'mkdocs-material'
+        with: { python-version: '3.x' }
+      - uses: actions/setup-dotnet@v4
         if: matrix.framework == 'docfx'
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Setup Python
-        if: matrix.framework == 'mkdocs'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-          cache: 'pip'
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            ~/.cache/pip
-          key: deps-${{ matrix.framework }}-${{ runner.os }}-v3
-          restore-keys: |
-            deps-${{ matrix.framework }}-${{ runner.os }}-
-            deps-${{ matrix.framework }}-
-
-      - name: Build ${{ matrix.framework }}
+        with: { dotnet-version: '8.0.x' }
+      - name: Build
+        id: build
+        env:
+          FW: ${{ matrix.framework }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          OWNER: ${{ github.repository_owner }}
         run: |
-          set +e  # Don't exit on error
-          REPO_NAME="${{ needs.discover.outputs.repo_name }}"
-          OWNER="${{ needs.discover.outputs.owner }}"
-          AVATAR_URL="https://github.com/${OWNER}.png"
-          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
-          FW="${{ matrix.framework }}"
-          
-          mkdir -p /tmp/build
-          cp -r /tmp/user-content/* /tmp/build/ 2>/dev/null || true
-          mkdir -p $GITHUB_WORKSPACE/output
+          set +e
+          AVATAR="https://github.com/${OWNER}.png"
+          GHURL="https://github.com/${OWNER}/${REPO_NAME}"
+          BASE="/${REPO_NAME}/${FW}"
+          mkdir -p output
           
           case "$FW" in
+            docsify)
+              mkdir -p site
+              cp -r *.md site/ 2>/dev/null; cp -r docs site/ 2>/dev/null; cp -r */ site/ 2>/dev/null || true
+              [ ! -f site/README.md ] && { [ -f site/index.md ] && cp site/index.md site/README.md || echo "# Welcome" > site/README.md; }
+              cat > site/index.html << EOF
+          <!DOCTYPE html><html><head><meta charset="UTF-8"><title>${OWNER}/${REPO_NAME}</title>
+          <link rel="icon" href="${AVATAR}"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+          </head><body><div id="app"></div><script>
+          window.\$docsify={name:'<img src="${AVATAR}" width="32" style="vertical-align:middle;margin-right:8px;border-radius:50%">${OWNER}/${REPO_NAME}',repo:'${GHURL}',loadSidebar:true,subMaxLevel:3}
+          </script><script src="https://cdn.jsdelivr.net/npm/docsify@4"></script></body></html>
+          EOF
+              echo "* [Home](/)" > site/_sidebar.md
+              find site -name "*.md" ! -name "README.md" ! -name "_sidebar.md" | sort | while read f; do
+                n=$(basename "$f" .md); p="${f#site/}"; echo "* [$n](/$p)" >> site/_sidebar.md
+              done
+              touch site/.nojekyll
+              cp -r site/* output/
+              ;;
+            docute)
+              mkdir -p _site
+              cp -r *.md _site/ 2>/dev/null; cp -r docs _site/ 2>/dev/null; cp -r */ _site/ 2>/dev/null || true
+              [ ! -f _site/README.md ] && { [ -f _site/index.md ] && cp _site/index.md _site/README.md || echo "# Welcome" > _site/README.md; }
+              SIDEBAR="[{title:'Home',link:'/'}]"
+              cat > _site/index.html << EOF
+          <!DOCTYPE html><html><head><meta charset="utf-8"><title>${OWNER}/${REPO_NAME}</title>
+          <link rel="icon" href="${AVATAR}"><link rel="stylesheet" href="https://unpkg.com/docute@4/dist/docute.css">
+          </head><body><div id="docute"></div><script src="https://unpkg.com/docute@4/dist/docute.js"></script><script>
+          new Docute({target:'#docute',title:'${OWNER}/${REPO_NAME}',
+          logo:'<span style="display:flex;align-items:center;gap:8px"><img src="${AVATAR}" style="width:24px;height:24px;border-radius:50%">${OWNER}/${REPO_NAME}</span>',
+          darkThemeToggler:true,nav:[{title:'GitHub',link:'${GHURL}'}],sidebar:${SIDEBAR}})
+          </script></body></html>
+          EOF
+              cp -r _site/* output/
+              ;;
             vitepress)
-              cd /tmp/build
-              cat > package.json << 'EOF'
-          {"private":true,"scripts":{"build":"vitepress build docs"},"devDependencies":{"vitepress":"^1.0.0"}}
+              npm init -y && npm i vitepress -D
+              mkdir -p .vitepress docs
+              cp -r *.md docs/ 2>/dev/null || true
+              for d in */; do case "$d" in .vitepress/|node_modules/|docs/) ;; *) cp -r "$d" docs/ 2>/dev/null;; esac; done
+              [ ! -f docs/index.md ] && { [ -f docs/README.md ] && mv docs/README.md docs/index.md || echo "# Welcome" > docs/index.md; }
+              cat > .vitepress/config.js << EOF
+          export default{title:'${OWNER}/${REPO_NAME}',base:'${BASE}/',srcDir:'docs',ignoreDeadLinks:true,
+          head:[['link',{rel:'icon',href:'${AVATAR}'}]],
+          themeConfig:{logo:'${AVATAR}',siteTitle:'${OWNER}/${REPO_NAME}',socialLinks:[{icon:'github',link:'${GHURL}'}]}}
           EOF
-              mkdir -p docs/.vitepress
-              mv *.md docs/ 2>/dev/null || true
-              for d in */; do [ -d "$d" ] && [ "$d" != "docs/" ] && mv "$d" docs/ 2>/dev/null || true; done
-              cat > docs/.vitepress/config.mjs << CONFIGEOF
-          export default {
-            title: '${OWNER}/${REPO_NAME}',
-            base: '/${REPO_NAME}/vitepress/',
-            head: [['link', { rel: 'icon', href: '${AVATAR_URL}' }]],
-            ignoreDeadLinks: true,
-            themeConfig: {
-              logo: '${AVATAR_URL}',
-              siteTitle: '${OWNER}/${REPO_NAME}',
-              socialLinks: [{ icon: 'github', link: '${GITHUB_URL}' }],
-              footer: { message: 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/vuejs/vitepress" target="_blank">VitePress</a>' }
-            }
-          }
-          CONFIGEOF
-              npm install --prefer-offline && npm run build || true
-              cp -r docs/.vitepress/dist/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>VitePress</h1>" > $GITHUB_WORKSPACE/output/index.html
+              npx vitepress build && cp -r .vitepress/dist/* output/ || echo "<h1>VitePress</h1>" > output/index.html
               ;;
-
             vuepress)
-              cd /tmp/build
-              cat > package.json << 'EOF'
-          {"private":true,"scripts":{"build":"vuepress build docs"},"devDependencies":{"vuepress":"^1.9.10"}}
-          EOF
+              cat > package.json << 'PJ'
+          {"scripts":{"build":"vuepress build docs"},"devDependencies":{"vuepress":"^1.9.10"}}
+          PJ
               mkdir -p docs/.vuepress
-              [ -f "index.md" ] && [ ! -f "README.md" ] && mv index.md README.md
-              mv *.md docs/ 2>/dev/null || true
-              for d in */; do [ -d "$d" ] && [ "$d" != "docs/" ] && mv "$d" docs/ 2>/dev/null || true; done
-              [ -f "docs/index.md" ] && [ ! -f "docs/README.md" ] && mv docs/index.md docs/README.md
-              [ ! -f "docs/README.md" ] && echo "# Welcome" > docs/README.md
-              cat > docs/.vuepress/config.js << CONFIGEOF
-          module.exports = {
-            title: '${OWNER}/${REPO_NAME}',
-            base: '/${REPO_NAME}/vuepress/',
-            head: [['link', { rel: 'icon', href: '${AVATAR_URL}' }]],
-            themeConfig: { logo: '${AVATAR_URL}', repo: '${GITHUB_URL}', sidebar: 'auto' }
-          }
-          CONFIGEOF
-              npm install --prefer-offline && npm run build || true
-              cp -r docs/.vuepress/dist/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>VuePress</h1>" > $GITHUB_WORKSPACE/output/index.html
+              [ -f index.md ] && [ ! -f README.md ] && mv index.md README.md
+              cp -r *.md docs/ 2>/dev/null || true
+              for d in */; do case "$d" in docs/|node_modules/) ;; *) cp -r "$d" docs/ 2>/dev/null;; esac; done
+              [ -f docs/index.md ] && [ ! -f docs/README.md ] && mv docs/index.md docs/README.md
+              [ ! -f docs/README.md ] && echo "# Welcome" > docs/README.md
+              cat > docs/.vuepress/config.js << EOF
+          module.exports={title:'${OWNER}/${REPO_NAME}',base:'${BASE}/',head:[['link',{rel:'icon',href:'${AVATAR}'}]],
+          themeConfig:{logo:'${AVATAR}',repo:'${GHURL}',sidebar:'auto'}}
+          EOF
+              npm i && npm run build && cp -r docs/.vuepress/dist/* output/ || echo "<h1>VuePress</h1>" > output/index.html
               ;;
-
             docusaurus)
-              cd /tmp/build
               npx create-docusaurus@latest site classic --javascript
               cd site
-              rm -rf docs/* && cp -r /tmp/build/*.md docs/ 2>/dev/null || true
-              find docs -name "*.md" | while read f; do
-                if ! head -1 "$f" | grep -q "^---"; then
-                  title=$(basename "$f" .md | sed 's/-/ /g')
-                  { echo "---"; echo "title: $title"; echo "---"; echo ""; cat "$f"; } > "$f.tmp" && mv "$f.tmp" "$f"
-                fi
+              rm -rf docs blog src/pages
+              mkdir -p content
+              cp -r ../*.md content/ 2>/dev/null; cp -r ../docs content/ 2>/dev/null || true
+              for d in ../*/; do dn=$(basename "$d"); case "$dn" in site|node_modules|.docship) ;; *) cp -r "$d" content/ 2>/dev/null;; esac; done
+              find content -name "*.md" | while read f; do
+                head -1 "$f" | grep -q "^---" || { t=$(basename "$f" .md); echo -e "---\ntitle: $t\n---\n$(cat "$f")" > "$f"; }
               done
-              cat > docusaurus.config.js << CONFIGEOF
-          module.exports = {
-            title: '${OWNER}/${REPO_NAME}',
-            url: 'https://${OWNER}.github.io',
-            baseUrl: '/${REPO_NAME}/docusaurus/',
-            favicon: '${AVATAR_URL}',
-            onBrokenLinks: 'ignore',
-            onBrokenMarkdownLinks: 'ignore',
-            onBrokenAnchors: 'ignore',
-            themeConfig: {
-              navbar: { title: '${OWNER}/${REPO_NAME}', logo: { src: '${AVATAR_URL}', style: { borderRadius: '50%' } }, items: [{ href: '${GITHUB_URL}', label: 'GitHub', position: 'right' }] },
-              footer: { style: 'light', copyright: 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/facebook/docusaurus" target="_blank">Docusaurus</a>' }
-            },
-            presets: [['classic', { docs: { routeBasePath: '/', sidebarPath: false }, blog: false }]],
-            markdown: { format: 'md', preprocessor: ({filePath, fileContent}) => fileContent }
-          };
-          CONFIGEOF
-              npm install && npm run build || true
-              cp -r build/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>Docusaurus</h1>" > $GITHUB_WORKSPACE/output/index.html
+              [ -f content/index.md ] && T=content/index.md || { [ -f content/README.md ] && T=content/README.md || T=$(find content -name "*.md" | head -1); }
+              [ -n "$T" ] && grep -q "^slug:" "$T" || { echo -e "---\nslug: /\n---\n$(cat "$T")" > "$T"; }
+              cat > docusaurus.config.js << EOF
+          module.exports={title:'${OWNER}/${REPO_NAME}',url:'https://${OWNER}.github.io',baseUrl:'${BASE}/',favicon:'${AVATAR}',
+          onBrokenLinks:'ignore',onBrokenMarkdownLinks:'ignore',
+          presets:[['classic',{docs:{routeBasePath:'/',path:'content'},blog:false}]],
+          themeConfig:{navbar:{title:'${OWNER}/${REPO_NAME}',logo:{src:'${AVATAR}'},items:[{href:'${GHURL}',label:'GitHub',position:'right'}]}}}
+          EOF
+              npm i && npm run build && cp -r build/* ../output/ || echo "<h1>Docusaurus</h1>" > ../output/index.html
               ;;
-
             starlight)
-              cd /tmp/build
               npm create astro@latest -- site --template starlight --no-install --no-git -y
               cd site
-              rm -rf src/content/docs/* && mkdir -p src/content/docs
-              cp -r /tmp/build/*.md src/content/docs/ 2>/dev/null || true
+              rm -rf src/content/docs/*
+              curl -sL "${AVATAR}" -o src/assets/avatar.png 2>/dev/null || true
+              curl -sL "${AVATAR}" -o public/favicon.png 2>/dev/null || true
+              cp -r ../*.md src/content/docs/ 2>/dev/null; cp -r ../docs/* src/content/docs/ 2>/dev/null || true
+              for d in ../*/; do dn=$(basename "$d"); case "$dn" in site|node_modules|.docship|docs) ;; *) cp -r "$d" src/content/docs/ 2>/dev/null;; esac; done
               find src/content/docs -name "*.md" | while read f; do
-                if ! head -1 "$f" | grep -q "^---"; then
-                  title=$(basename "$f" .md | sed 's/-/ /g')
-                  { echo "---"; echo "title: $title"; echo "---"; echo ""; cat "$f"; } > "$f.tmp" && mv "$f.tmp" "$f"
-                fi
+                head -3 "$f" | grep -q "^---" || { t=$(basename "$f" .md | sed 's/-/ /g'); echo -e "---\ntitle: $t\n---\n$(cat "$f")" > "$f"; }
               done
-              [ -f "src/content/docs/index.md" ] && mv src/content/docs/index.md src/content/docs/index.mdx
-              cat > astro.config.mjs << CONFIGEOF
-          import { defineConfig } from 'astro/config';
-          import starlight from '@astrojs/starlight';
-          export default defineConfig({
-            base: '/${REPO_NAME}/starlight',
-            integrations: [starlight({
-              title: '${OWNER}/${REPO_NAME}',
-              favicon: '${AVATAR_URL}',
-              social: [{ icon: 'github', label: 'GitHub', href: '${GITHUB_URL}' }],
-              sidebar: [{ label: 'Docs', autogenerate: { directory: '.' } }]
-            })]
-          });
-          CONFIGEOF
-              npm install && npm run build || true
-              cp -r dist/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>Starlight</h1>" > $GITHUB_WORKSPACE/output/index.html
+              [ ! -f src/content/docs/index.mdx ] && { F=$(find src/content/docs -name "*.md" | head -1); [ -n "$F" ] && cp "$F" src/content/docs/index.mdx || echo -e "---\ntitle: Home\n---\n# Welcome" > src/content/docs/index.mdx; }
+              cat > astro.config.mjs << EOF
+          import{defineConfig}from'astro/config';import starlight from'@astrojs/starlight';
+          export default defineConfig({site:'https://${OWNER}.github.io',base:'${BASE}',
+          integrations:[starlight({title:'${OWNER}/${REPO_NAME}',logo:{src:'./src/assets/avatar.png'},favicon:'/favicon.png',
+          social:[{icon:'github',label:'GitHub',href:'${GHURL}'}],sidebar:[{label:'Docs',autogenerate:{directory:'.'}}],credits:false})]});
+          EOF
+              npm i && npm run build && cp -r dist/* ../output/ || echo "<h1>Starlight</h1>" > ../output/index.html
               ;;
-
             rspress)
-              cd /tmp/build
-              mkdir -p docs && mv *.md docs/ 2>/dev/null || true
-              cat > package.json << 'EOF'
-          {"private":true,"scripts":{"build":"rspress build"},"devDependencies":{"rspress":"^1.0.0"}}
+              mkdir -p temp/docs/public
+              curl -sL "${AVATAR}" -o temp/docs/public/logo.png 2>/dev/null || true
+              curl -sL "${AVATAR}" -o temp/docs/public/favicon.png 2>/dev/null || true
+              cp -r *.md temp/docs/ 2>/dev/null; cp -r docs/* temp/docs/ 2>/dev/null || true
+              for d in */; do case "$d" in temp/|node_modules/|.docship/|docs/) ;; *) cp -r "$d" temp/docs/ 2>/dev/null;; esac; done
+              find temp/docs -name "*.md" | while read f; do
+                head -3 "$f" | grep -q "^---" || { t=$(basename "$f" .md | sed 's/-/ /g'); echo -e "---\ntitle: $t\n---\n$(cat "$f")" > "$f"; }
+              done
+              [ ! -f temp/docs/index.md ] && { F=$(find temp/docs -name "*.md" | head -1); [ -n "$F" ] && cp "$F" temp/docs/index.md || echo -e "---\ntitle: Welcome\n---\n# Welcome" > temp/docs/index.md; }
+              cd temp
+              echo '{"name":"t","scripts":{"build":"rspress build"},"dependencies":{"rspress":"^1.0.0"}}' > package.json
+              cat > rspress.config.ts << EOF
+          import{defineConfig}from'rspress/config';
+          export default defineConfig({root:'docs',base:'${BASE}/',title:'${OWNER}/${REPO_NAME}',icon:'/favicon.png',logo:'/logo.png',
+          themeConfig:{socialLinks:[{icon:'github',mode:'link',content:'${GHURL}'}]}});
           EOF
-              cat > rspress.config.ts << CONFIGEOF
-          import { defineConfig } from 'rspress/config';
-          export default defineConfig({
-            root: 'docs',
-            title: '${OWNER}/${REPO_NAME}',
-            icon: '${AVATAR_URL}',
-            logo: '${AVATAR_URL}',
-            base: '/${REPO_NAME}/rspress/',
-            themeConfig: {
-              socialLinks: [{ icon: 'github', mode: 'link', content: '${GITHUB_URL}' }],
-              footer: { message: 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/web-infra-dev/rspress" target="_blank">Rspress</a>' }
-            }
-          });
-          CONFIGEOF
-              npm install --prefer-offline && npm run build || true
-              cp -r doc_build/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>Rspress</h1>" > $GITHUB_WORKSPACE/output/index.html
+              npm i && npm run build && cp -r doc_build/* ../output/ || echo "<h1>Rspress</h1>" > ../output/index.html
               ;;
-
-            mkdocs)
-              cd /tmp/build
-              mkdir -p docs && mv *.md docs/ 2>/dev/null || true
-              [ ! -f "docs/index.md" ] && echo "# Welcome" > docs/index.md
-              pip install mkdocs-material
-              cat > mkdocs.yml << CONFIGEOF
+            mkdocs-material)
+              pip install mkdocs-material -q
+              mkdir -p docs
+              cp -r *.md docs/ 2>/dev/null || true
+              for d in */; do case "$d" in docs/|node_modules/|.docship/) ;; *) cp -r "$d" docs/ 2>/dev/null;; esac; done
+              [ ! -f docs/index.md ] && { [ -f docs/README.md ] && mv docs/README.md docs/index.md || echo "# Welcome" > docs/index.md; }
+              cat > mkdocs.yml << EOF
           site_name: ${OWNER}/${REPO_NAME}
-          site_url: https://${OWNER}.github.io/${REPO_NAME}/mkdocs/
-          repo_url: ${GITHUB_URL}
-          theme:
-            name: material
-            logo: ${AVATAR_URL}
-            favicon: ${AVATAR_URL}
-          extra:
-            generator: false
-          copyright: 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/squidfunk/mkdocs-material" target="_blank">MkDocs Material</a>'
-          CONFIGEOF
-              mkdocs build || true
-              cp -r site/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>MkDocs</h1>" > $GITHUB_WORKSPACE/output/index.html
-              ;;
-
-            docfx)
-              cd /tmp/build
-              dotnet tool install -g docfx || true
-              mkdir -p docs && mv *.md docs/ 2>/dev/null || true
-              [ ! -f "docs/index.md" ] && echo "# Welcome" > docs/index.md
-              echo "- name: Home" > docs/toc.yml
-              echo "  href: index.md" >> docs/toc.yml
-              cat > docfx.json << EOF
-          {"build":{"content":[{"files":["docs/**/*.md"]}],"dest":"_site","globalMetadata":{"_appTitle":"${OWNER}/${REPO_NAME}","_appFooter":"<span>Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> · <a href=\"https://github.com/dotnet/docfx\" target=\"_blank\">DocFX</a></span>","_disableContribution":true},"template":["default","modern"]}}
+          site_url: https://${OWNER}.github.io${BASE}/
+          repo_url: ${GHURL}
+          theme: {name: material, logo: ${AVATAR}, favicon: ${AVATAR}, features: [navigation.instant, navigation.sections, search.highlight]}
+          plugins: [search]
+          extra: {generator: false}
           EOF
-              docfx build docfx.json || true
-              cp -r _site/* $GITHUB_WORKSPACE/output/ 2>/dev/null || echo "<h1>DocFX</h1>" > $GITHUB_WORKSPACE/output/index.html
+              mkdocs build && cp -r site/* output/ || echo "<h1>MkDocs</h1>" > output/index.html
               ;;
-
             honkit)
-              cd /tmp/build
-              [ -f "index.md" ] && [ ! -f "README.md" ] && mv index.md README.md
-              cat > package.json << 'EOF'
-          {"private":true,"scripts":{"build":"honkit build"},"devDependencies":{"honkit":"^6.1.4"}}
-          EOF
-              cat > book.json << BOOKEOF
-          {"title":"${OWNER}/${REPO_NAME}","plugins":["-sharing"],"links":{"sidebar":{"GitHub":"${GITHUB_URL}"}}}
-          BOOKEOF
-              [ ! -f "SUMMARY.md" ] && { echo "# Summary"; echo ""; echo "* [Home](README.md)"; } > SUMMARY.md
-              [ ! -f "README.md" ] && echo "# Welcome" > README.md
-              npm install --prefer-offline && npx honkit build || true
-              rm -f _book/gitbook/images/favicon.ico 2>/dev/null || true
-              cp -r _book/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>HonKit</h1>" > $GITHUB_WORKSPACE/output/index.html
+              [ -f index.md ] && [ ! -f README.md ] && mv index.md README.md
+              echo '{"name":"h","scripts":{"build":"honkit build"},"devDependencies":{"honkit":"^6.1.4"}}' > package.json
+              echo "{\"title\":\"${OWNER}/${REPO_NAME}\",\"plugins\":[\"-sharing\"],\"links\":{\"sidebar\":{\"GitHub\":\"${GHURL}\"}}}" > book.json
+              [ ! -f SUMMARY.md ] && { echo "# Summary"; echo ""; [ -f README.md ] && echo "* [Home](README.md)"; find . -maxdepth 1 -name "*.md" ! -name README.md ! -name SUMMARY.md | sort | while read f; do n=$(basename "$f" .md); echo "* [$n]($n.md)"; done; for d in */; do case "$d" in _book/|node_modules/|.docship/) ;; *) [ -n "$(find "$d" -name '*.md')" ] && { dn=$(basename "$d"); echo ""; echo "## $dn"; find "$d" -maxdepth 1 -name "*.md" | sort | while read f; do fn=$(basename "$f" .md); echo "* [$fn]($d$fn.md)"; done; };; esac; done; } > SUMMARY.md
+              [ ! -f README.md ] && echo "# Welcome" > README.md
+              npm i && npx honkit build || true
+              rm -f _book/gitbook/images/favicon.ico 2>/dev/null
+              find _book -name "*.html" -exec sed -i "s|href=\"gitbook/|href=\"${BASE}/gitbook/|g;s|src=\"gitbook/|src=\"${BASE}/gitbook/|g" {} \;
+              cp -r _book/* output/ 2>/dev/null || echo "<h1>HonKit</h1>" > output/index.html
               ;;
-
+            docfx)
+              dotnet tool install -g docfx || true
+              mkdir -p docs templates/custom/public
+              cp -r *.md docs/ 2>/dev/null || true
+              for d in */; do case "$d" in docs/|templates/|_site/|.docship/) ;; *) cp -r "$d" docs/ 2>/dev/null;; esac; done
+              [ ! -f docs/index.md ] && { F=$(find docs -name "*.md" | head -1); [ -n "$F" ] && cp "$F" docs/index.md || echo "# Welcome" > docs/index.md; }
+              echo "- name: Home" > docs/toc.yml; echo "  href: index.md" >> docs/toc.yml
+              find docs -maxdepth 1 -name "*.md" ! -name index.md | sort | while read f; do n=$(basename "$f" .md); echo "- name: $n"; echo "  href: $n.md"; done >> docs/toc.yml
+              echo '---' > index.md; echo 'redirect_url: docs/' >> index.md; echo '---' >> index.md
+              cat > docfx.json << EOF
+          {"build":{"content":[{"files":["**/*.{md,yml}"],"exclude":["_site/**","README.md"]}],"dest":"_site",
+          "globalMetadata":{"_appTitle":"${OWNER}/${REPO_NAME}","_appFooter":"Powered by NekoTick · DocFX","_disableContribution":true},
+          "template":["default","modern"]}}
+          EOF
+              docfx build docfx.json && cp -r _site/* output/ || echo "<h1>DocFX</h1>" > output/index.html
+              ;;
             fumadocs)
-              cd /tmp/build
-              npx create-fumadocs-app@latest site || true
-              if [ -d "site" ]; then
-                cd site
-                rm -rf content/docs/* 2>/dev/null || true
-                mkdir -p content/docs
-                cp -r /tmp/build/*.md content/docs/ 2>/dev/null || true
-                find content/docs -name "*.md" -exec sh -c 'mv "$1" "${1%.md}.mdx"' _ {} \;
-                cat > next.config.mjs << CONFIGEOF
-          import { createMDX } from 'fumadocs-mdx/next';
-          const withMDX = createMDX();
-          export default withMDX({ output: 'export', basePath: '/${REPO_NAME}/fumadocs', images: { unoptimized: true } });
-          CONFIGEOF
-                npm install && npm run build || true
-                cp -r out/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              fi
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>Fumadocs</h1>" > $GITHUB_WORKSPACE/output/index.html
-              ;;
-
-            nextra)
-              cd /tmp/build
-              cat > package.json << 'EOF'
-          {"private":true,"scripts":{"build":"next build"},"dependencies":{"next":"^14","react":"^18","react-dom":"^18","nextra":"^3","nextra-theme-docs":"^3"}}
+              npx create-fumadocs-app@latest temp --template +next+fuma-docs-mdx+static || true
+              [ -d temp ] && {
+                cp -rn temp/* . 2>/dev/null; cp -rn temp/.* . 2>/dev/null; rm -rf temp
+                rm -rf content/docs/*; mkdir -p content/docs
+                cp -r *.md content/docs/ 2>/dev/null; cp -r docs/* content/docs/ 2>/dev/null || true
+                for d in */; do case "$d" in content/|src/|app/|node_modules/|.docship/|docs/) ;; *) cp -r "$d" content/docs/ 2>/dev/null;; esac; done
+                find content/docs -name "*.md" -o -name "*.mdx" | while read f; do
+                  head -1 "$f" | grep -q "^---" || { t=$(basename "$f" | sed 's/\.[^.]*$//;s/-/ /g'); echo -e "---\ntitle: $t\n---\n$(cat "$f")" > "$f"; }
+                done
+                [ ! -f content/docs/index.mdx ] && [ ! -f content/docs/index.md ] && { F=$(find content/docs -name "*.md" -o -name "*.mdx" | head -1); [ -n "$F" ] && cp "$F" content/docs/index.mdx || echo -e "---\ntitle: Welcome\n---\n# Welcome" > content/docs/index.mdx; }
+                cat > next.config.mjs << EOF
+          import{createMDX}from'fumadocs-mdx/next';const withMDX=createMDX();
+          export default withMDX({output:'export',basePath:'${BASE}',images:{unoptimized:true}});
           EOF
-              mkdir -p src/pages && mv *.md src/pages/ 2>/dev/null || true
-              find src/pages -name "*.md" -exec sh -c 'mv "$1" "${1%.md}.mdx"' _ {} \;
-              cat > next.config.mjs << CONFIGEOF
-          import nextra from 'nextra';
-          const withNextra = nextra({ theme: 'nextra-theme-docs', themeConfig: './theme.config.jsx' });
-          export default withNextra({ output: 'export', basePath: '/${REPO_NAME}/nextra', images: { unoptimized: true } });
-          CONFIGEOF
-              cat > theme.config.jsx << CONFIGEOF
-          export default {
-            logo: <><img src="${AVATAR_URL}" style={{width:24,height:24,borderRadius:'50%',marginRight:8}}/><span>${OWNER}/${REPO_NAME}</span></>,
-            project: { link: '${GITHUB_URL}' },
-            footer: { content: <span>Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/shuding/nextra" target="_blank">Nextra</a></span> }
-          }
-          CONFIGEOF
-              npm install --prefer-offline && npm run build || true
-              cp -r out/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>Nextra</h1>" > $GITHUB_WORKSPACE/output/index.html
+                npm i && npm run build && cp -r out/* output/ || true
+              }
+              [ ! -f output/index.html ] && echo "<h1>Fumadocs</h1>" > output/index.html
               ;;
-
+            nextra)
+              echo '{"name":"n","scripts":{"build":"next build"},"dependencies":{"next":"^15","nextra":"^4","nextra-theme-docs":"^4","react":"^19","react-dom":"^19"}}' > package.json
+              mkdir -p src/app/docs/[[...mdxPath]] src/content
+              cp -r *.md src/content/ 2>/dev/null; cp -r docs/* src/content/ 2>/dev/null || true
+              for d in */; do case "$d" in src/|node_modules/|.docship/|docs/) ;; *) cp -r "$d" src/content/ 2>/dev/null;; esac; done
+              [ ! -f src/content/index.mdx ] && [ ! -f src/content/index.md ] && { F=$(find src/content -name "*.md" -o -name "*.mdx" | head -1); [ -n "$F" ] && cp "$F" src/content/index.mdx || echo "# Welcome" > src/content/index.mdx; }
+              cat > next.config.mjs << 'EOF'
+          import nextra from'nextra';const withNextra=nextra({contentDirBasePath:'/docs',staticImage:false});
+          export default withNextra({output:'export',images:{unoptimized:true},basePath:process.env.BASE_PATH||''});
+          EOF
+              cat > mdx-components.js << 'EOF'
+          import{useMDXComponents as g}from'nextra-theme-docs';export function useMDXComponents(c){return{...g(),...c}}
+          EOF
+              cat > src/app/layout.jsx << EOF
+          import{Layout,Navbar}from'nextra-theme-docs';import{Head}from'nextra/components';import{getPageMap}from'nextra/page-map';import'nextra-theme-docs/style.css';
+          export const metadata={title:'${OWNER}/${REPO_NAME}',icons:{icon:'${AVATAR}'}};
+          export default async function L({children}){const pm=await getPageMap();return(<html lang="en" suppressHydrationWarning><Head/><body><Layout navbar={<Navbar logo={<><img src="${AVATAR}" width={24} height={24} style={{borderRadius:'50%',marginRight:8}}/>${OWNER}/${REPO_NAME}</>} projectLink="${GHURL}"/>} pageMap={pm}>{children}</Layout></body></html>)}
+          EOF
+              cat > 'src/app/docs/[[...mdxPath]]/page.jsx' << 'EOF'
+          import{generateStaticParamsFor,importPage}from'nextra/pages';import{useMDXComponents as g}from'../../../../mdx-components';
+          export const generateStaticParams=generateStaticParamsFor('mdxPath');
+          export async function generateMetadata(p){const{metadata}=await importPage((await p.params).mdxPath);return metadata}
+          const W=g().wrapper;export default async function P(p){const{default:C,toc,metadata}=await importPage((await p.params).mdxPath);return<W toc={toc} metadata={metadata}><C{...p}/></W>}
+          EOF
+              echo 'import{redirect}from"next/navigation";export default function(){redirect("/docs")}' > src/app/page.jsx
+              BASE_PATH="${BASE}" npm i && BASE_PATH="${BASE}" npm run build && cp -r out/* output/ || echo "<h1>Nextra</h1>" > output/index.html
+              ;;
             *)
               echo "Unknown framework: $FW"
-              echo "<h1>$FW</h1><p>Build not configured</p>" > $GITHUB_WORKSPACE/output/index.html
+              echo "<h1>$FW</h1><p>Not configured</p>" > output/index.html
               ;;
           esac
-          
-          # Ensure output has content
-          cd $GITHUB_WORKSPACE
-          if [ ! -f "output/index.html" ] && [ ! -f "output/index.md" ] && [ ! -f "output/README.md" ]; then
-            echo "<h1>${FW}</h1><p>Build completed</p>" > output/index.html
-          fi
-          
-          # Always succeed
+          [ ! -f output/index.html ] && echo "<h1>${FW}</h1>" > output/index.html
           exit 0
-
-      - name: Upload framework artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.framework }}
+          name: build-${{ matrix.framework }}
           path: output/
           retention-days: 1
 
   combine:
-    needs: [discover, build]
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: frameworks
-
-      - name: Build static frameworks and create showcase
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Create showcase
         run: |
-          REPO_NAME="${{ needs.discover.outputs.repo_name }}"
-          OWNER="${{ needs.discover.outputs.owner }}"
-          AVATAR_URL="https://github.com/${OWNER}.png"
-          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
-          
+          REPO_NAME="${{ github.event.repository.name }}"
+          OWNER="${{ github.repository_owner }}"
+          AVATAR="https://github.com/${OWNER}.png"
           mkdir -p _site
-          
-          # Build docsify (no npm needed)
-          mkdir -p _site/docsify
-          cp -r frameworks/user-content/* _site/docsify/ 2>/dev/null || true
-          [ -f "_site/docsify/index.md" ] && [ ! -f "_site/docsify/README.md" ] && mv _site/docsify/index.md _site/docsify/README.md
-          cat > _site/docsify/index.html << HTMLEOF
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>${OWNER}/${REPO_NAME}</title>
-            <link rel="icon" href="${AVATAR_URL}">
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-            <style>.app-name-link img{border-radius:50%;width:32px;height:32px;vertical-align:middle;margin-right:10px;}</style>
-          </head>
-          <body>
-            <div id="app"></div>
-            <script>
-              window.\$docsify = {
-                name: '<img src="${AVATAR_URL}">${OWNER}/${REPO_NAME}',
-                repo: '${GITHUB_URL}',
-                subMaxLevel: 3,
-                plugins: [function(hook){hook.afterEach(function(html){return html+'<div style="text-align:center;padding:20px;border-top:1px solid #eee;margin-top:40px;">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/docsifyjs/docsify" target="_blank">Docsify</a></div>';});}]
-              }
-            </script>
-            <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
-          </body>
-          </html>
-          HTMLEOF
-          
-          # Build docute (no npm needed)
-          mkdir -p _site/docute
-          cp -r frameworks/user-content/* _site/docute/ 2>/dev/null || true
-          [ -f "_site/docute/index.md" ] && [ ! -f "_site/docute/README.md" ] && mv _site/docute/index.md _site/docute/README.md
-          cat > _site/docute/index.html << HTMLEOF
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>${OWNER}/${REPO_NAME}</title>
-            <link rel="icon" href="${AVATAR_URL}">
-            <link rel="stylesheet" href="https://unpkg.com/docute@4/dist/docute.css">
-          </head>
-          <body>
-            <div id="docute"></div>
-            <script src="https://unpkg.com/docute@4/dist/docute.js"></script>
-            <script>
-              new Docute({
-                target: '#docute',
-                title: '${OWNER}/${REPO_NAME}',
-                logo: '<span style="display:flex;align-items:center;"><img src="${AVATAR_URL}" style="width:28px;height:28px;border-radius:50%;margin-right:10px;">${OWNER}/${REPO_NAME}</span>',
-                darkThemeToggler: true,
-                nav: [{title:'GitHub',link:'${GITHUB_URL}'}],
-                footer: '<div style="text-align:center;padding:20px;border-top:1px solid #eee;">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/egoist/docute" target="_blank">Docute</a></div>'
-              })
-            </script>
-          </body>
-          </html>
-          HTMLEOF
-          
-          # Move each framework to its subdirectory
-          for dir in frameworks/*/; do
-            name=$(basename "$dir")
-            [ "$name" = "user-content" ] && continue
-            mkdir -p "_site/$name"
-            cp -r "$dir"* "_site/$name/" 2>/dev/null || true
+          for d in artifacts/build-*/; do
+            [ -d "$d" ] || continue
+            fw=$(basename "$d" | sed 's/^build-//')
+            mkdir -p "_site/$fw"
+            cp -r "$d"* "_site/$fw/" 2>/dev/null || true
           done
-          
-          # Framework metadata
-          declare -A DESCRIPTIONS
-          declare -A BADGES
-          DESCRIPTIONS[docusaurus]="Build optimized websites quickly, focus on your content."
-          DESCRIPTIONS[vitepress]="Vite & Vue powered static site generator."
-          DESCRIPTIONS[vuepress]="Vue-powered static site generator."
-          DESCRIPTIONS[starlight]="Build beautiful, accessible, high-performance docs."
-          DESCRIPTIONS[rspress]="Fast Rspack-based static site generator."
-          DESCRIPTIONS[fumadocs]="Beautiful documentation framework for Next.js."
-          DESCRIPTIONS[nextra]="Simple, powerful and flexible site generation."
-          DESCRIPTIONS[mkdocs]="Technical documentation that just works."
-          DESCRIPTIONS[docfx]="Static site generator for .NET API documentation."
-          DESCRIPTIONS[docsify]="A magical documentation site generator."
-          DESCRIPTIONS[docute]="Effortless documentation, done right."
-          DESCRIPTIONS[honkit]="Building beautiful books using Markdown."
-          BADGES[docusaurus]="React"
-          BADGES[vitepress]="Vue"
-          BADGES[vuepress]="Vue"
-          BADGES[starlight]="Astro"
-          BADGES[rspress]="React"
-          BADGES[fumadocs]="Next.js"
-          BADGES[nextra]="Next.js"
-          BADGES[mkdocs]="Python"
-          BADGES[docfx]=".NET"
-          BADGES[docsify]="Vanilla JS"
-          BADGES[docute]="Vanilla JS"
-          BADGES[honkit]="GitBook Fork"
-          
-          # Generate preview cards with iframes
           CARDS=""
-          for dir in _site/*/; do
-            fw=$(basename "$dir")
-            desc="${DESCRIPTIONS[$fw]:-Documentation framework}"
-            badge="${BADGES[$fw]:-Framework}"
-            title=$(echo "$fw" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
-            CARDS="$CARDS<div class=\"card\"><div class=\"card-header\"><span class=\"badge\">$badge</span><h3>$title</h3><a href=\"$fw/\" target=\"_blank\" class=\"open-btn\">↗</a></div><div class=\"iframe-wrapper\"><iframe src=\"$fw/\" loading=\"lazy\"></iframe></div></div>"
+          for d in _site/*/; do
+            fw=$(basename "$d")
+            CARDS="$CARDS<div class='card'><div class='hdr'><h3>$fw</h3><a href='$fw/' target='_blank'>↗</a></div><iframe src='$fw/' loading='lazy'></iframe></div>"
           done
-
-          cat > _site/index.html << HTMLEOF
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${OWNER}/${REPO_NAME} - Documentation Showcase</title>
-            <link rel="icon" href="${AVATAR_URL}">
-            <style>
-              *{box-sizing:border-box;margin:0;padding:0}
-              body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a1a2e;min-height:100vh;color:#fff}
-              .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px 20px;text-align:center}
-              .header img{width:64px;height:64px;border-radius:50%;margin-bottom:16px;border:3px solid rgba(255,255,255,0.3)}
-              .header h1{font-size:2rem;margin-bottom:8px}
-              .header p{opacity:0.9;font-size:1rem}
-              .container{max-width:1800px;margin:0 auto;padding:30px 20px}
-              .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-              @media(min-width:1400px){.grid{grid-template-columns:repeat(3,1fr)}}
-              @media(max-width:900px){.grid{grid-template-columns:1fr}}
-              .card{background:#16213e;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
-              .card-header{display:flex;align-items:center;padding:12px 16px;background:#1a1a2e;gap:12px}
-              .card-header h3{flex:1;font-size:1.1rem;color:#fff;margin:0}
-              .badge{background:#667eea;color:#fff;padding:4px 10px;border-radius:20px;font-size:0.7rem;font-weight:600}
-              .open-btn{color:#667eea;text-decoration:none;font-size:1.2rem;padding:4px 8px;border-radius:6px;transition:background 0.2s}
-              .open-btn:hover{background:rgba(102,126,234,0.2)}
-              .iframe-wrapper{position:relative;width:100%;height:450px;background:#fff}
-              .iframe-wrapper iframe{width:100%;height:100%;border:none}
-              .footer{text-align:center;padding:30px 20px;color:#888}
-              .footer a{color:#667eea;text-decoration:none}
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <img src="${AVATAR_URL}" alt="Avatar">
-              <h1>${OWNER}/${REPO_NAME}</h1>
-              <p>Preview your documentation in multiple frameworks</p>
-            </div>
-            <div class="container"><div class="grid">${CARDS}</div></div>
-            <div class="footer">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a></div>
-          </body>
-          </html>
-          HTMLEOF
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
+          cat > _site/index.html << EOF
+          <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>${OWNER}/${REPO_NAME} - Showcase</title><link rel="icon" href="${AVATAR}">
+          <style>
+          *{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui;background:#1a1a2e;color:#fff;min-height:100vh}
+          .hd{background:linear-gradient(135deg,#667eea,#764ba2);padding:40px 20px;text-align:center}
+          .hd img{width:64px;height:64px;border-radius:50%;margin-bottom:16px}
+          .hd h1{font-size:2rem;margin-bottom:8px}.hd p{opacity:.9}
+          .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:1800px;margin:0 auto;padding:30px 20px}
+          @media(min-width:1400px){.grid{grid-template-columns:repeat(3,1fr)}}
+          @media(max-width:900px){.grid{grid-template-columns:1fr}}
+          .card{background:#16213e;border-radius:12px;overflow:hidden}
+          .hdr{display:flex;align-items:center;padding:12px 16px;background:#1a1a2e}
+          .hdr h3{flex:1;font-size:1.1rem}.hdr a{color:#667eea;text-decoration:none;font-size:1.2rem}
+          iframe{width:100%;height:450px;border:none;background:#fff}
+          .ft{text-align:center;padding:30px;color:#888}.ft a{color:#667eea;text-decoration:none}
+          </style></head><body>
+          <div class="hd"><img src="${AVATAR}"><h1>${OWNER}/${REPO_NAME}</h1><p>Documentation Showcase</p></div>
+          <div class="grid">${CARDS}</div>
+          <div class="ft">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a></div>
+          </body></html>
+          EOF
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: _site }
 
   deploy:
     needs: combine
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    environment: { name: github-pages, url: "${{ steps.deploy.outputs.page_url }}" }
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deploy
         uses: actions/deploy-pages@v4
