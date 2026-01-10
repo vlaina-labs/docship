@@ -66,6 +66,17 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i -E 's/<slot[^>]*>[^<]*<\/slot>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<slot[^>]*\/>//gi' "$f" 2>/dev/null || true
   
+  # ===== STEP 6.5: REMOVE VUE DIRECTIVES FROM HTML TAGS =====
+  # Remove entire tags with Vue directives (v-if, v-for, v-bind, v-on, v-model, v-slot, etc.)
+  sed -i -E 's/<div[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show|v-html|v-text|v-pre|v-cloak|v-once)[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show|v-html|v-text|v-pre|v-cloak|v-once)[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show)[^>]*>//gi' "$f" 2>/dev/null || true
+  # Remove tags with Vue shorthand syntax (:prop, @event, #slot)
+  sed -i -E 's/<div[^>]*(:[a-z]+|@[a-z]+|#[a-z]+)="[^"]*"[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+[^>]*(:[a-z]+|@[a-z]+|#[a-z]+)="[^"]*"[^>]*>//gi' "$f" 2>/dev/null || true
+  # Remove Angular directives (*ngIf, *ngFor, [ngClass], (click), [(ngModel)])
+  sed -i -E 's/<[a-z]+[^>]*(\*ng[A-Z][a-z]+|\[ng[A-Z][a-z]+\]|\([a-z]+\)|\[\([a-z]+\)\])[^>]*>//gi' "$f" 2>/dev/null || true
+  
   # ===== STEP 7: REMOVE DANGEROUS LINKS =====
   sed -i -E 's/\[[^]]*\]\(javascript:[^)]*\)//gi' "$f" 2>/dev/null || true
   sed -i -E 's/\[[^]]*\]\(vbscript:[^)]*\)//gi' "$f" 2>/dev/null || true
@@ -86,26 +97,46 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i 's/```mdx-code-block/```text/gi' "$f" 2>/dev/null || true
   sed -i 's/```unclosed/```text/gi' "$f" 2>/dev/null || true
   sed -i 's/```objective-c/```objc/gi' "$f" 2>/dev/null || true
-  # Fix triple backtick language issues
+  # Handle malformed code blocks like ```triple``` or ```inner
   sed -i "s/\`\`\`triple\`\`\`/\`\`\`text/g" "$f" 2>/dev/null || true
-  sed -i -E "s/\`\`\`[^a-zA-Z0-9_\n-]/\`\`\`text/g" "$f" 2>/dev/null || true
+  sed -i "s/\`\`\`triple backtick\`\`\`/\`\`\`text/g" "$f" 2>/dev/null || true
+  sed -i "s/\`\`\`inner/\`\`\`text/g" "$f" 2>/dev/null || true
+  # Handle C++, C#, F# which may cause issues
+  sed -i 's/```c++/```cpp/gi' "$f" 2>/dev/null || true
+  sed -i 's/```c#/```csharp/gi' "$f" 2>/dev/null || true
+  sed -i 's/```f#/```fsharp/gi' "$f" 2>/dev/null || true
+  # Handle code blocks with attributes like ```js {1,3-5} showLineNumbers
+  sed -i -E 's/```([a-z]+) \{[^}]*\}[^`]*/```\1/gi' "$f" 2>/dev/null || true
+  # Handle code blocks with title like ```jsx title="..."
+  sed -i -E 's/```([a-z]+) title="[^"]*"/```\1/gi' "$f" 2>/dev/null || true
   
-  # ===== STEP 9: ESCAPE/REMOVE TEMPLATE SYNTAX (CRITICAL) =====
-  # Use a temp file to process with awk (handles code blocks properly)
+  # ===== STEP 9: REMOVE TEMPLATE SYNTAX (NUCLEAR OPTION) =====
+  # Use awk to process file, removing ALL template syntax OUTSIDE code blocks
+  # This is aggressive but necessary for Vue/Nunjucks/Liquid compatibility
   awk '
     BEGIN { in_code = 0 }
-    /^```/ { in_code = !in_code }
+    /^```/ { in_code = !in_code; print; next }
     {
       if (!in_code) {
-        # Replace {{ with escaped version
-        gsub(/\{\{/, "\\{\\{")
-        gsub(/\}\}/, "\\}\\}")
-        # Replace {% with escaped version  
-        gsub(/\{%/, "\\{%")
-        gsub(/%\}/, "%\\}")
-        # Replace {# with escaped version
-        gsub(/\{#/, "\\{#")
-        gsub(/#\}/, "#\\}")
+        # First pass: remove complete patterns
+        gsub(/\{\{<[^>]*>\}\}/, "")
+        gsub(/\{\{[^}]*\}\}/, "")
+        gsub(/\{%[^%]*%\}/, "")
+        gsub(/\{#[^#]*#\}/, "")
+        # Second pass: remove any remaining braces (handles nested/malformed)
+        # Keep removing until no more {{ or {% exist
+        while (match($0, /\{\{/) || match($0, /\{%/)) {
+          gsub(/\{\{/, "")
+          gsub(/\}\}/, "")
+          gsub(/\{%/, "")
+          gsub(/%\}/, "")
+        }
+        # Also remove Hugo shortcode syntax {{< >}}
+        gsub(/\{\{</, "")
+        gsub(/>\}\}/, "")
+        # Remove any orphaned }} or %}
+        gsub(/\}\}/, "")
+        gsub(/%\}/, "")
       }
       print
     }
@@ -115,28 +146,19 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i 's/<%/\&lt;%/g' "$f" 2>/dev/null || true
   sed -i 's/%>/%\&gt;/g' "$f" 2>/dev/null || true
   
-  # ===== STEP 11: ESCAPE ${} (Template literals) =====
-  sed -i 's/\${/\\${/g' "$f" 2>/dev/null || true
-  
-  # ===== STEP 12: REMOVE FRAMEWORK-SPECIFIC SYNTAX =====
-  # MkDocs admonitions
+  # ===== STEP 11: REMOVE FRAMEWORK-SPECIFIC SYNTAX =====
   sed -i -E 's/^!!! [a-z].*$/> **Note**/g' "$f" 2>/dev/null || true
   sed -i -E 's/^\?\?\? [a-z].*$/> **Note**/g' "$f" 2>/dev/null || true
   sed -i -E 's/^\?\?\?\+ [a-z].*$/> **Note**/g' "$f" 2>/dev/null || true
-  # Docusaurus admonitions
   sed -i -E 's/^:::[a-z].*$/> **Note**/g' "$f" 2>/dev/null || true
   sed -i 's/^:::$//' "$f" 2>/dev/null || true
-  # MkDocs tabs
   sed -i -E 's/^=== ".*"$//' "$f" 2>/dev/null || true
-  # MkDocs annotations
   sed -i 's/{ \.annotate }//g' "$f" 2>/dev/null || true
-  # RST directives
   sed -i -E 's/^\.\. [a-z]+::.*$/> **Note**/g' "$f" 2>/dev/null || true
-  # MDX imports/exports - REMOVE completely
   sed -i -E "s/^import .+ from ['\"].*['\"];?$//g" "$f" 2>/dev/null || true
   sed -i -E 's/^export (const|let|var|default) .*//g' "$f" 2>/dev/null || true
   
-  # ===== STEP 13: REMOVE JSX EXPRESSIONS =====
+  # ===== STEP 12: REMOVE JSX EXPRESSIONS =====
   sed -i -E 's/^\{[a-zA-Z_][a-zA-Z0-9_. ()]*\}$//g' "$f" 2>/dev/null || true
   
 done
