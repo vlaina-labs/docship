@@ -221,37 +221,15 @@ jobs:
           # Create index.md if not exists
           if [ ! -f "index.md" ] && [ ! -f "index.html" ]; then
             if [ -f "README.md" ]; then
-              # Use README.md content but add front matter
-              cat > index.md << 'FMEOF'
----
-layout: home
-title: Home
----
-
-FMEOF
+              printf '%s\n' '---' 'layout: home' 'title: Home' '---' '' > index.md
               cat README.md >> index.md
             else
               FIRST_DOC=$(find . -maxdepth 1 -name "*.md" ! -name "README.md" -type f | sort | head -1)
               if [ -n "$FIRST_DOC" ]; then
-                cat > index.md << 'FMEOF'
----
-layout: home
-title: Home
----
-
-FMEOF
+                printf '%s\n' '---' 'layout: home' 'title: Home' '---' '' > index.md
                 cat "$FIRST_DOC" >> index.md
               else
-                cat > index.md << 'INDEXEOF'
----
-layout: home
-title: Home
----
-
-# Welcome
-
-Add your markdown files to get started.
-INDEXEOF
+                printf '%s\n' '---' 'layout: home' 'title: Home' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > index.md
               fi
             fi
           fi
@@ -260,13 +238,7 @@ INDEXEOF
           if [ -f "index.md" ]; then
             if ! head -1 "index.md" | grep -q "^---"; then
               TMPFILE=$(mktemp)
-              cat > "$TMPFILE" << 'FMEOF'
----
-layout: home
-title: Home
----
-
-FMEOF
+              printf '%s\n' '---' 'layout: home' 'title: Home' '---' '' > "$TMPFILE"
               cat index.md >> "$TMPFILE"
               mv "$TMPFILE" index.md
             fi
@@ -278,13 +250,7 @@ FMEOF
               filename=$(basename "$f" .md)
               title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
               TMPFILE=$(mktemp)
-              cat > "$TMPFILE" << FMEOF
----
-layout: page
-title: $title
----
-
-FMEOF
+              printf '%s\n' '---' 'layout: page' "title: $title" '---' '' > "$TMPFILE"
               cat "$f" >> "$TMPFILE"
               mv "$TMPFILE" "$f"
             fi
