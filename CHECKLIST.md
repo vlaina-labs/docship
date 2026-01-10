@@ -174,6 +174,17 @@ Before releasing a theme, test with:
 - [ ] Nextra uses MDX - user content with `${}`, `<>`, `{}` may cause JSX parsing errors
 - [ ] Set `staticImage: false` to prevent build failures from invalid image paths
 
+## Docute Configuration
+
+- [ ] Docute is a pure frontend framework - no build process needed
+- [ ] Only needs `index.html` + markdown files
+- [ ] Uses CDN for docute.js and docute.css (`unpkg.com/docute@4`)
+- [ ] URL routing: `/` => `/README.md`, `/foo` => `/foo.md`, `/foo/` => `/foo/README.md`
+- [ ] Sidebar must be manually configured or auto-generated via script
+- [ ] Logo is a Vue template string
+- [ ] Use `darkThemeToggler: true` for dark mode toggle
+- [ ] No npm cache needed since no build process
+
 ## Multi-Language Support
 
 - [ ] VitePress/Docusaurus i18n is static - requires manual translation files

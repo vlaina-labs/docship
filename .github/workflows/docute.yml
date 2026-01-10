@@ -26,35 +26,6 @@ jobs:
           AVATAR_URL="https://github.com/${OWNER}.png"
           
           mkdir -p _site
-          
-          cat > _site/index.html << EOF
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-              <title>${OWNER}/${REPO_NAME}</title>
-              <link rel="icon" href="${AVATAR_URL}">
-              <link rel="stylesheet" href="https://unpkg.com/docute@4/dist/docute.css">
-            </head>
-            <body>
-              <div id="docute"></div>
-              <script src="https://unpkg.com/docute@4/dist/docute.js"></script>
-              <script>
-                new Docute({
-                  target: '#docute',
-                  title: '${OWNER}/${REPO_NAME}',
-                  nav: [
-                    {
-                      title: 'GitHub',
-                      link: 'https://github.com/${OWNER}/${REPO_NAME}'
-                    }
-                  ]
-                })
-              </script>
-            </body>
-          </html>
-          EOF
 
       - name: Copy user content
         run: |
@@ -80,6 +51,88 @@ jobs:
               printf '%s\n' '# Welcome' '' 'This is your documentation site. Add markdown files to get started.' > _site/README.md
             fi
           fi
+
+      - name: Generate sidebar and create index.html
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          
+          cd _site
+          
+          generate_sidebar() {
+            local dir="$1"
+            local prefix="$2"
+            local items=""
+            
+            for file in $(find "$dir" -maxdepth 1 -name "*.md" ! -name "README.md" 2>/dev/null | sort); do
+              filename=$(basename "$file" .md)
+              title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+              link="${prefix}${filename}"
+              items="${items}{title:'${title}',link:'/${link}'},"
+            done
+            
+            for subdir in $(find "$dir" -maxdepth 1 -type d ! -name "." ! -name ".." 2>/dev/null | sort); do
+              dirname=$(basename "$subdir")
+              if [ "$dirname" != "." ] && [ -n "$(find "$subdir" -name "*.md" 2>/dev/null)" ]; then
+                title=$(echo "$dirname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                children=""
+                for file in $(find "$subdir" -maxdepth 1 -name "*.md" 2>/dev/null | sort); do
+                  fname=$(basename "$file" .md)
+                  ftitle=$(echo "$fname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                  if [ "$fname" = "README" ]; then
+                    flink="${dirname}"
+                  else
+                    flink="${dirname}/${fname}"
+                  fi
+                  children="${children}{title:'${ftitle}',link:'/${flink}'},"
+                done
+                if [ -n "$children" ]; then
+                  items="${items}{title:'${title}',children:[${children%,}]},"
+                fi
+              fi
+            done
+            
+            echo "[{title:'Home',link:'/'},${items%,}]"
+          }
+          
+          SIDEBAR=$(generate_sidebar "." "")
+          
+          cat > index.html << EOF
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+              <title>${OWNER}/${REPO_NAME}</title>
+              <link rel="icon" href="${AVATAR_URL}">
+              <link rel="stylesheet" href="https://unpkg.com/docute@4/dist/docute.css">
+            </head>
+            <body>
+              <div id="docute"></div>
+              <script src="https://unpkg.com/docute@4/dist/docute.js"></script>
+              <script>
+                new Docute({
+                  target: '#docute',
+                  title: '${OWNER}/${REPO_NAME}',
+                  logo: '<img src="${AVATAR_URL}" alt="Logo" style="width:24px;height:24px;border-radius:50%;margin-right:8px;vertical-align:middle;"><span>${OWNER}/${REPO_NAME}</span>',
+                  darkThemeToggler: true,
+                  nav: [
+                    {
+                      title: 'Home',
+                      link: '/'
+                    },
+                    {
+                      title: 'GitHub',
+                      link: 'https://github.com/${OWNER}/${REPO_NAME}'
+                    }
+                  ],
+                  sidebar: ${SIDEBAR}
+                })
+              </script>
+            </body>
+          </html>
+          EOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
