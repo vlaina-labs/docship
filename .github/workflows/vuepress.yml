@@ -241,6 +241,30 @@ jobs:
             background-color #242424
             border-bottom-color #333
           
+          body.dark-mode .navbar .links
+            background-color #242424
+          
+          body.dark-mode .search-box input
+            background-color #333
+            border-color #444
+            color #e0e0e0
+          
+          body.dark-mode .search-box .suggestions
+            background-color #333
+            border-color #444
+          
+          body.dark-mode .search-box .suggestion
+            border-bottom-color #444
+          
+          body.dark-mode .search-box .suggestion.focused
+            background-color #444
+          
+          body.dark-mode .nav-link
+            color #e0e0e0
+          
+          body.dark-mode .repo-link
+            color #e0e0e0
+          
           body.dark-mode .sidebar
             background-color #1a1a1a
             border-right-color #333
