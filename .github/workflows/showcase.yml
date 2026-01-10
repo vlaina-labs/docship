@@ -119,7 +119,7 @@ jobs:
       - name: Checkout showcase assets
         uses: actions/checkout@v4
         with:
-          sparse-checkout: showcase
+          sparse-checkout: docship/showcase
           path: repo
 
       - name: Create showcase site
@@ -130,8 +130,8 @@ jobs:
           mkdir -p _site
           
           # Copy CSS and JS assets
-          cp repo/showcase/style.css _site/
-          cp repo/showcase/script.js _site/
+          cp repo/docship/showcase/style.css _site/
+          cp repo/docship/showcase/script.js _site/
           
           # Collect all build-* artifacts
           for d in artifacts/build-*/; do
