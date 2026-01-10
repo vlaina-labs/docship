@@ -2,6 +2,17 @@ name: Deploy VitePress to GitHub Pages
 
 on:
   workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -9,7 +20,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-vitepress"
   cancel-in-progress: false
 
 jobs:
@@ -44,6 +55,8 @@ jobs:
           done
 
       - name: Setup VitePress project
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
         run: |
           npm init -y
           npm install vitepress --save-dev
@@ -53,13 +66,14 @@ jobs:
           mkdir -p docs
           
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}/"
           
-          cat > .vitepress/config.js << 'CONFIGEOF'
+          cat > .vitepress/config.js << CONFIGEOF
           export default {
             title: '${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}',
             titleTemplate: ':title',
             description: 'Documentation',
-            base: '/${REPO_NAME}/',
+            base: '${BASE_PATH}',
             srcDir: 'docs',
             cleanUrls: true,
             ignoreDeadLinks: true,
@@ -186,14 +200,25 @@ jobs:
         run: npx vitepress build
 
       - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: .vitepress/dist
 
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-vitepress
+          path: .vitepress/dist/
+          retention-days: 1
+
   deploy:
+    if: ${{ inputs.deploy != false }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

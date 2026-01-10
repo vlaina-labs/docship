@@ -2,6 +2,17 @@ name: Deploy Docusaurus to GitHub Pages
 
 on:
   workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -9,7 +20,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-docusaurus"
   cancel-in-progress: false
 
 jobs:
@@ -61,8 +72,11 @@ jobs:
           rm -rf temp-site
 
       - name: Configure for Docs-only mode
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}/"
           
           cat > docusaurus.config.js << CONFIGEOF
           import {themes as prismThemes} from 'prism-react-renderer';
@@ -72,7 +86,7 @@ jobs:
             tagline: 'Documentation',
             favicon: 'https://github.com/${GITHUB_REPOSITORY_OWNER}.png',
             url: 'https://${GITHUB_REPOSITORY_OWNER}.github.io',
-            baseUrl: '/${REPO_NAME}/',
+            baseUrl: '${BASE_PATH}',
             organizationName: '${GITHUB_REPOSITORY_OWNER}',
             projectName: '${REPO_NAME}',
             onBrokenLinks: 'ignore',
@@ -160,14 +174,25 @@ jobs:
           npm run build
 
       - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: build
 
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-docusaurus
+          path: build/
+          retention-days: 1
+
   deploy:
+    if: ${{ inputs.deploy != false }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

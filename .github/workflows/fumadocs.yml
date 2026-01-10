@@ -2,6 +2,17 @@ name: Deploy Fumadocs to GitHub Pages
 
 on:
   workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -9,7 +20,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-fumadocs"
   cancel-in-progress: false
 
 jobs:
@@ -85,8 +96,11 @@ jobs:
           EOF
 
       - name: Configure for GitHub Pages
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
           cat > next.config.mjs << EOF
           import { createMDX } from 'fumadocs-mdx/next';
 
@@ -95,7 +109,7 @@ jobs:
           /** @type {import('next').NextConfig} */
           const config = {
             output: 'export',
-            basePath: '/${REPO_NAME}',
+            basePath: '${BASE_PATH}',
             images: { unoptimized: true },
             reactStrictMode: true,
           };
@@ -334,14 +348,25 @@ jobs:
           npm run build
 
       - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: out
 
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-fumadocs
+          path: out/
+          retention-days: 1
+
   deploy:
+    if: ${{ inputs.deploy != false }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -2,6 +2,17 @@ name: Deploy MkDocs Material to GitHub Pages
 
 on:
   workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -9,7 +20,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-mkdocs-material"
   cancel-in-progress: false
 
 jobs:
@@ -49,8 +60,11 @@ jobs:
           done
 
       - name: Setup MkDocs project
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}/"
           
           mkdir -p docs
           cp -r /tmp/user-content/* docs/ 2>/dev/null || true
@@ -72,7 +86,7 @@ jobs:
           
           cat > mkdocs.yml << CONFIGEOF
           site_name: ${GITHUB_REPOSITORY_OWNER}/${REPO_NAME}
-          site_url: https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}/
+          site_url: https://${GITHUB_REPOSITORY_OWNER}.github.io${BASE_PATH}
           repo_url: https://github.com/${GITHUB_REPOSITORY}
           repo_name: ${GITHUB_REPOSITORY}
           
@@ -122,14 +136,25 @@ jobs:
         run: mkdocs build
 
       - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-mkdocs-material
+          path: site/
+          retention-days: 1
+
   deploy:
+    if: ${{ inputs.deploy != false }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

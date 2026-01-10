@@ -2,6 +2,17 @@ name: Deploy VuePress to GitHub Pages
 
 on:
   workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -9,7 +20,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-vuepress"
   cancel-in-progress: false
 
 jobs:
@@ -53,11 +64,14 @@ jobs:
 
       - name: Create VuePress project
         if: steps.check.outputs.initialized == 'false'
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           AVATAR_URL="https://github.com/${OWNER}.png"
           GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}/"
           
           cat > package.json << 'EOF'
           {
@@ -81,7 +95,7 @@ jobs:
           module.exports = {
             title: '${OWNER}/${REPO_NAME}',
             description: 'Documentation for ${OWNER}/${REPO_NAME}',
-            base: '/${REPO_NAME}/',
+            base: '${BASE_PATH}',
             head: [
               ['link', { rel: 'icon', href: '${AVATAR_URL}' }]
             ],
@@ -311,14 +325,25 @@ jobs:
           npm run build
 
       - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vuepress/dist
 
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-vuepress
+          path: docs/.vuepress/dist/
+          retention-days: 1
+
   deploy:
+    if: ${{ inputs.deploy != false }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

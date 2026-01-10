@@ -2,6 +2,17 @@ name: Deploy HonKit to GitHub Pages
 
 on:
   workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -9,7 +20,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "pages-honkit"
   cancel-in-progress: false
 
 jobs:
@@ -263,24 +274,38 @@ jobs:
           OWNER="$OWNER" REPO_NAME="$REPO_NAME" AVATAR_URL="$AVATAR_URL" GITHUB_URL="$GITHUB_URL" node /tmp/inject.js
 
       - name: Fix base path for GitHub Pages
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
           
-          # Update all relative paths to include repo name
+          # Update all relative paths to include base path
           find _book -name "*.html" | while read f; do
-            sed -i "s|href=\"gitbook/|href=\"/${REPO_NAME}/gitbook/|g" "$f"
-            sed -i "s|src=\"gitbook/|src=\"/${REPO_NAME}/gitbook/|g" "$f"
+            sed -i "s|href=\"gitbook/|href=\"${BASE_PATH}/gitbook/|g" "$f"
+            sed -i "s|src=\"gitbook/|src=\"${BASE_PATH}/gitbook/|g" "$f"
           done
 
       - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: _book
 
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-honkit
+          path: _book/
+          retention-days: 1
+
   deploy:
+    if: ${{ inputs.deploy != false }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
