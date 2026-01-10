@@ -71,9 +71,10 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i -E 's/<div[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show|v-html|v-text|v-pre|v-cloak|v-once)[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<[a-z]+[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show|v-html|v-text|v-pre|v-cloak|v-once)[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<[a-z]+[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show)[^>]*>//gi' "$f" 2>/dev/null || true
-  # Remove tags with Vue shorthand syntax (:prop, @event, #slot)
-  sed -i -E 's/<div[^>]*(:[a-z]+|@[a-z]+|#[a-z]+)="[^"]*"[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
-  sed -i -E 's/<[a-z]+[^>]*(:[a-z]+|@[a-z]+|#[a-z]+)="[^"]*"[^>]*>//gi' "$f" 2>/dev/null || true
+  # Remove tags with Vue shorthand syntax (:prop, @event, #slot) - with or without quotes
+  sed -i -E 's/<div[^>]*(:[a-z]+|@[a-z]+|#[a-z]+)(="[^"]*")?[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+[^>]*(:[a-z]+|@[a-z]+|#[a-z]+)(="[^"]*")?[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+[^>]* (:[a-z]+|@[a-z]+|#[a-z]+)[^>]*>//gi' "$f" 2>/dev/null || true
   # Remove Angular directives (*ngIf, *ngFor, [ngClass], (click), [(ngModel)])
   sed -i -E 's/<[a-z]+[^>]*(\*ng[A-Z][a-z]+|\[ng[A-Z][a-z]+\]|\([a-z]+\)|\[\([a-z]+\)\])[^>]*>//gi' "$f" 2>/dev/null || true
   
@@ -116,27 +117,23 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   awk '
     BEGIN { in_code = 0 }
     /^```/ { in_code = !in_code; print; next }
+    /^~~~/ { in_code = !in_code; print; next }
     {
       if (!in_code) {
-        # First pass: remove complete patterns
+        # Remove Hugo shortcodes first {{< >}} and {{< />}}
         gsub(/\{\{<[^>]*>\}\}/, "")
+        gsub(/\{\{<[^>]*\/>\}\}/, "")
+        # Remove complete template patterns
         gsub(/\{\{[^}]*\}\}/, "")
         gsub(/\{%[^%]*%\}/, "")
         gsub(/\{#[^#]*#\}/, "")
-        # Second pass: remove any remaining braces (handles nested/malformed)
-        # Keep removing until no more {{ or {% exist
-        while (match($0, /\{\{/) || match($0, /\{%/)) {
-          gsub(/\{\{/, "")
-          gsub(/\}\}/, "")
-          gsub(/\{%/, "")
-          gsub(/%\}/, "")
-        }
-        # Also remove Hugo shortcode syntax {{< >}}
-        gsub(/\{\{</, "")
-        gsub(/>\}\}/, "")
-        # Remove any orphaned }} or %}
+        # Aggressively remove any remaining {{ or {% (handles nested/malformed)
+        gsub(/\{\{/, "")
         gsub(/\}\}/, "")
+        gsub(/\{%/, "")
         gsub(/%\}/, "")
+        gsub(/\{#/, "")
+        gsub(/#\}/, "")
       }
       print
     }
