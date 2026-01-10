@@ -77,11 +77,11 @@ jobs:
           
           touch site/.nojekyll
 
-      - name: Sanitize markdown content
+      - name: Format markdown content
         run: |
-          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
-          chmod +x /tmp/sanitize.sh
-          /tmp/sanitize.sh site
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh site
 
       - name: Setup Pages
         if: ${{ inputs.deploy != false }}

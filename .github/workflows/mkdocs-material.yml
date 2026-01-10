@@ -133,11 +133,11 @@ jobs:
             - pymdownx.details
           CONFIGEOF
 
-      - name: Sanitize markdown content
+      - name: Format markdown content
         run: |
-          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
-          chmod +x /tmp/sanitize.sh
-          /tmp/sanitize.sh docs
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh docs
 
       - name: Build
         run: mkdocs build

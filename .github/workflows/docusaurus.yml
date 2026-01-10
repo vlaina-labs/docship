@@ -72,11 +72,11 @@ jobs:
           cp -rn temp-site/.* . 2>/dev/null || true
           rm -rf temp-site
 
-      - name: Sanitize markdown files
+      - name: Format markdown files
         run: |
-          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
-          chmod +x /tmp/sanitize.sh
-          /tmp/sanitize.sh /tmp/user-content
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh /tmp/user-content
 
       - name: Configure for Docs-only mode
         env:

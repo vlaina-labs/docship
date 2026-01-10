@@ -236,10 +236,10 @@ jobs:
             fi
           fi
           
-          # Sanitize markdown files
-          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
-          chmod +x /tmp/sanitize.sh
-          /tmp/sanitize.sh src/content
+          # Format markdown files
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh src/content
 
       - name: Install dependencies and Build
         env:

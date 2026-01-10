@@ -154,7 +154,7 @@ jobs:
           for d in $(ls -d _site/*/ 2>/dev/null | sort); do
             [ -d "$d" ] || continue
             fw=$(basename "$d")
-            CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${fw}</h3><a href='${fw}/' target='_blank'>â†—</a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy'></iframe></div></div>"
+            CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${fw}</h3><a href='${fw}/' target='_blank'>â†?/a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy'></iframe></div></div>"
           done
           
           # Create showcase page (HTML only)

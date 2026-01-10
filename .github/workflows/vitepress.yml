@@ -54,33 +54,16 @@ jobs:
             esac
           done
 
-      - name: Run sanitizer
+      - name: Run formatter
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Checking for scripts/sanitize.sh..."
-          ls -la scripts/ 2>/dev/null || echo "scripts/ directory not found"
-          
-          # Try local script first, fallback to download with cache bust
-          if [ -f "scripts/sanitize.sh" ]; then
-            echo "Using local sanitize.sh"
-            chmod +x scripts/sanitize.sh
-            ./scripts/sanitize.sh /tmp/user-content
+          if [ -f "scripts/format.sh" ]; then
+            chmod +x scripts/format.sh
+            ./scripts/format.sh /tmp/user-content
           else
-            echo "Downloading sanitize.sh from GitHub"
-            curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
-            chmod +x /tmp/sanitize.sh
-            /tmp/sanitize.sh /tmp/user-content
+            curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+            chmod +x /tmp/format.sh
+            /tmp/format.sh /tmp/user-content
           fi
-          
-          # Debug: show lines around 272 after sanitization
-          echo "=== Lines 265-280 of test-parser-killer.md after sanitization ==="
-          sed -n '265,280p' /tmp/user-content/test/test-parser-killer.md 2>/dev/null || echo "File not found"
-          echo "=== All lines containing < in test-parser-killer.md ==="
-          grep -n "<" /tmp/user-content/test/test-parser-killer.md 2>/dev/null | head -30 || echo "No matches"
-          echo "=== Lines 15-30 of test-framework-specific.md ==="
-          sed -n '15,30p' /tmp/user-content/test/test-framework-specific.md 2>/dev/null || echo "File not found"
-          echo "=== All lines containing < in test-framework-specific.md ==="
-          grep -n "<" /tmp/user-content/test/test-framework-specific.md 2>/dev/null | head -50 || echo "No matches"
 
       - name: Setup VitePress project
         env:
@@ -142,19 +125,8 @@ jobs:
 
       - name: Copy user content
         run: |
-          # Clear docs directory first to ensure sanitized content overwrites
           rm -rf docs/*
           cp -r /tmp/user-content/* docs/ 2>/dev/null || true
-          
-          # Debug: verify docs/test content
-          echo "=== docs/test/test-framework-specific.md lines 18-28 ==="
-          sed -n '18,28p' docs/test/test-framework-specific.md 2>/dev/null || echo "File not found"
-          echo "=== All < in docs/test/test-framework-specific.md ==="
-          grep -n "<" docs/test/test-framework-specific.md 2>/dev/null | head -30 || echo "No matches"
-          
-          # Also check if there's a test/ directory at repo root that might interfere
-          echo "=== Checking repo root test/ directory ==="
-          ls -la test/ 2>/dev/null || echo "No test/ at root"
           
           # Create index.md if needed
           if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then
@@ -197,29 +169,7 @@ jobs:
           node generate-sidebar.js
 
       - name: Build
-        run: |
-          # Run sanitize on root test/ directory as well (VitePress may process it)
-          if [ -f "scripts/sanitize.sh" ]; then
-            ./scripts/sanitize.sh .
-          fi
-          
-          # Try to see what VitePress generates - run with debug
-          echo "=== Checking .vitepress/cache after first attempt ==="
-          
-          # First, let's see if there's a way to see the generated vue file
-          # Try building with more verbose output
-          DEBUG=vitepress:* npx vitepress build 2>&1 | head -100 || true
-          
-          echo "=== Check if there's a cache with generated files ==="
-          find .vitepress -name "*.vue" -o -name "*.js" 2>/dev/null | head -20 || echo "No files"
-          
-          echo "=== Let's check the actual error by looking at node_modules ==="
-          # The error mentions line 22, column 14 - this is in the GENERATED vue template
-          # Let's try to exclude this specific file
-          echo "=== Try moving the problematic file ==="
-          mv docs/test/test-framework-specific.md /tmp/test-framework-specific.md.bak
-          
-          npx vitepress build
+        run: npx vitepress build
 
       - name: Setup Pages
         if: ${{ inputs.deploy != false }}

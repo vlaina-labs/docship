@@ -70,10 +70,10 @@ jobs:
             esac
           done
           
-          # Sanitize markdown files
-          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
-          chmod +x /tmp/sanitize.sh
-          /tmp/sanitize.sh temp-site/src/content/docs
+          # Format markdown files
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh temp-site/src/content/docs
           
           # Add front matter if missing
           find temp-site/src/content/docs -name "*.md" -type f | while read f; do
