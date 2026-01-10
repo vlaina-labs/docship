@@ -13,14 +13,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # 自动发现所有框架workflow并构建
-  # 注意：GitHub Actions 不支持动态 uses，所以这里需要列出所有框架
-  # 但构建逻辑完全复用各个主题的yml，无需在这里维护构建代码
+  # Build all framework workflows in parallel
+  # Note: GitHub Actions doesn't support dynamic `uses:`, so all frameworks must be listed explicitly
+  # Build logic is fully reused from individual workflow files
   
-  # 如果要添加新框架：
-  # 1. 创建新的 xxx.yml（参考现有workflow的inputs定义）
-  # 2. 在下面添加 build-xxx job
-  # 3. 在 combine job 的 needs 中添加 build-xxx
+  # To add a new framework:
+  # 1. Create xxx.yml (with inputs: base_path_suffix, deploy)
+  # 2. Add build-xxx job below
+  # 3. Add build-xxx to combine job's needs
 
   build-docsify:
     uses: ./.github/workflows/docsify.yml
@@ -94,8 +94,7 @@ jobs:
       base_path_suffix: nextra
       deploy: false
 
-  # 合并所有构建产物并创建展示页面
-  # 这个job会自动收集所有 build-* artifact，无需手动指定
+  # Combine all build artifacts and create showcase page
   combine:
     needs:
       - build-docsify
@@ -117,16 +116,24 @@ jobs:
         with:
           path: artifacts
 
+      - name: Checkout showcase assets
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: showcase
+          path: repo
+
       - name: Create showcase site
         run: |
-          REPO_NAME="${{ github.event.repository.name }}"
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
           
           mkdir -p _site
           
-          # 自动收集所有 build-* artifact
-          # artifact命名规则：build-<framework>
+          # Copy CSS and JS assets
+          cp repo/showcase/style.css _site/
+          cp repo/showcase/script.js _site/
+          
+          # Collect all build-* artifacts
           for d in artifacts/build-*/; do
             [ -d "$d" ] || continue
             fw=$(basename "$d" | sed 's/^build-//')
@@ -134,58 +141,43 @@ jobs:
             cp -r "$d"* "_site/$fw/" 2>/dev/null || true
           done
           
-          # 自动生成iframe卡片（按字母顺序）
+          # Generate iframe cards (sorted alphabetically)
           CARDS=""
           for d in $(ls -d _site/*/ 2>/dev/null | sort); do
             [ -d "$d" ] || continue
             fw=$(basename "$d")
-            CARDS="$CARDS<div class='card'><div class='hdr'><h3>$fw</h3><a href='$fw/' target='_blank'>↗</a></div><iframe src='$fw/' loading='lazy'></iframe></div>"
+            CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${fw}</h3><a href='${fw}/' target='_blank'>↗</a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy'></iframe></div></div>"
           done
           
-          # 自动计算框架数量
-          FW_COUNT=$(ls -d _site/*/ 2>/dev/null | wc -l)
-          
-          # 创建展示页面
-          cat > _site/index.html << EOF
+          # Create showcase page (HTML only)
+          cat > _site/index.html << 'HTMLEOF'
           <!DOCTYPE html>
           <html>
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>${OWNER}/${REPO_NAME} - Documentation Showcase</title>
-            <link rel="icon" href="${AVATAR}">
-            <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              body { font-family: system-ui, -apple-system, sans-serif; background: #1a1a2e; color: #fff; min-height: 100vh; }
-              .hd { background: linear-gradient(135deg, #667eea, #764ba2); padding: 40px 20px; text-align: center; }
-              .hd img { width: 64px; height: 64px; border-radius: 50%; margin-bottom: 16px; }
-              .hd h1 { font-size: 2rem; margin-bottom: 8px; }
-              .hd p { opacity: 0.9; }
-              .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 1800px; margin: 0 auto; padding: 30px 20px; }
-              @media (min-width: 1400px) { .grid { grid-template-columns: repeat(3, 1fr); } }
-              @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-              .card { background: #16213e; border-radius: 12px; overflow: hidden; }
-              .hdr { display: flex; align-items: center; padding: 12px 16px; background: #1a1a2e; }
-              .hdr h3 { flex: 1; font-size: 1.1rem; }
-              .hdr a { color: #667eea; text-decoration: none; font-size: 1.2rem; }
-              iframe { width: 100%; height: 450px; border: none; background: #fff; }
-              .ft { text-align: center; padding: 30px; color: #888; }
-              .ft a { color: #667eea; text-decoration: none; }
-            </style>
+            <title>Documentation Showcase</title>
+            <link rel="icon" href="AVATAR_PLACEHOLDER">
+            <link rel="stylesheet" href="style.css">
           </head>
           <body>
-            <div class="hd">
-              <img src="${AVATAR}" alt="Avatar">
-              <h1>${OWNER}/${REPO_NAME}</h1>
-              <p>Documentation Showcase - ${FW_COUNT} Frameworks</p>
+            <div class="toolbar">
+              <span>Preview:</span>
+              <button class="toggle-btn active" data-mode="desktop" onclick="setMode('desktop')">🖥 Desktop</button>
+              <button class="toggle-btn" data-mode="mobile" onclick="setMode('mobile')">📱 Mobile</button>
             </div>
-            <div class="grid">${CARDS}</div>
+            <div class="grid">CARDS_PLACEHOLDER</div>
             <div class="ft">
               Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a>
             </div>
+            <script src="script.js"></script>
           </body>
           </html>
-          EOF
+          HTMLEOF
+          
+          # Replace placeholders
+          sed -i "s|AVATAR_PLACEHOLDER|${AVATAR}|g" _site/index.html
+          sed -i "s|CARDS_PLACEHOLDER|${CARDS}|g" _site/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

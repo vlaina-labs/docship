@@ -1,0 +1,129 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #1a1a2e;
+  color: #fff;
+  min-height: 100vh;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #16213e;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-bottom: 1px solid #2a2a4e;
+}
+
+.toolbar span {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.toggle-btn {
+  background: #2a2a4e;
+  border: none;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  background: #3a3a5e;
+}
+
+.toggle-btn.active {
+  background: #667eea;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+@media (min-width: 1400px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: #16213e;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.hdr {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: #1a1a2e;
+}
+
+.hdr h3 {
+  flex: 1;
+  font-size: 1.1rem;
+}
+
+.hdr a {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 1.2rem;
+}
+
+.iframe-wrap {
+  display: flex;
+  justify-content: center;
+  background: #fff;
+}
+
+.iframe-wrap iframe {
+  border: none;
+  background: #fff;
+  transition: width 0.3s, height 0.3s;
+}
+
+.iframe-wrap.desktop iframe {
+  width: 100%;
+  height: 450px;
+}
+
+.iframe-wrap.mobile iframe {
+  width: 375px;
+  height: 667px;
+  border-left: 1px solid #eee;
+  border-right: 1px solid #eee;
+}
+
+.ft {
+  text-align: center;
+  padding: 30px;
+  color: #888;
+}
+
+.ft a {
+  color: #667eea;
+  text-decoration: none;
+}
