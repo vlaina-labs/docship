@@ -197,7 +197,12 @@ jobs:
           node generate-sidebar.js
 
       - name: Build
-        run: npx vitepress build
+        run: |
+          # Run sanitize on root test/ directory as well (VitePress may process it)
+          if [ -f "scripts/sanitize.sh" ]; then
+            ./scripts/sanitize.sh .
+          fi
+          npx vitepress build
 
       - name: Setup Pages
         if: ${{ inputs.deploy != false }}
