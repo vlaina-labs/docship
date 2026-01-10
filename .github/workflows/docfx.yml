@@ -107,31 +107,18 @@ jobs:
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           
-          # Create root index.md (homepage)
-          if [ ! -f "index.md" ]; then
-            FIRST_DOC=$(find docs -maxdepth 1 -type f -name "*.md" 2>/dev/null | sort | head -1)
-            if [ -n "$FIRST_DOC" ]; then
-              cp "$FIRST_DOC" index.md
-            else
-              cat > index.md << INDEXEOF
-          # ${OWNER}/${REPO_NAME}
-
-          Welcome to the documentation.
-
-          ## Getting Started
-
-          Browse the documentation using the navigation.
+          # Create root index.md that redirects to docs/
+          cat > index.md << 'INDEXEOF'
+          ---
+          redirect_url: docs/
+          ---
           INDEXEOF
-            fi
-          fi
           
-          # Create root toc.yml (top navbar)
-          if [ ! -f "toc.yml" ]; then
-            cat > toc.yml << 'TOCEOF'
+          # Create root toc.yml (top navbar) - only Docs entry
+          cat > toc.yml << 'TOCEOF'
           - name: Docs
             href: docs/
           TOCEOF
-          fi
           
           # Create docs/toc.yml (left sidebar) - DocFX format without "items:" prefix
           if [ ! -f "docs/toc.yml" ]; then
