@@ -100,6 +100,9 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i -E 's/<template[^>]*>[^<]*<\/template>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<slot[^>]*>[^<]*<\/slot>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<slot[^>]*\/>//gi' "$f" 2>/dev/null || true
+  # Remove custom elements (kebab-case components like <my-component>)
+  sed -i -E 's/<[a-z]+-[a-z-]+[^>]*>[^<]*<\/[a-z]+-[a-z-]+>//g' "$f" 2>/dev/null || true
+  sed -i -E 's/<[a-z]+-[a-z-]+[^>]*\/>//g' "$f" 2>/dev/null || true
   
   # ===== STEP 6.5: REMOVE VUE DIRECTIVES FROM HTML TAGS =====
   # Remove entire tags with Vue directives (v-if, v-for, v-bind, v-on, v-model, v-slot, etc.)
