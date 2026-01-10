@@ -85,7 +85,7 @@ jobs:
                 "GitHub": "${GITHUB_URL}"
               }
             },
-            "plugins": ["-sharing", "-fontsettings"],
+            "plugins": ["-sharing"],
             "pluginsConfig": {}
           }
           BOOKEOF
