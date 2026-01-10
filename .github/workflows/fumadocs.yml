@@ -236,7 +236,7 @@ jobs:
                 className={buttonVariants({
                   color: 'secondary',
                   size: 'sm',
-                  className: 'gap-2 mb-4 [&_svg]:size-3.5',
+                  className: 'w-fit gap-2 mb-4 [&_svg]:size-3.5',
                 })}
                 onClick={onClick}
               >
