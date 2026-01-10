@@ -187,7 +187,7 @@ jobs:
           const fs = require('fs');
           const path = require('path');
           
-          function generateSidebar(dir) {
+          function generateSidebar(dir, prefix = '/') {
             const items = [];
             const files = fs.readdirSync(dir).sort();
             
@@ -196,22 +196,44 @@ jobs:
               const stat = fs.statSync(fullPath);
               
               if (stat.isDirectory() && !file.startsWith('.') && !file.startsWith('_') && file !== 'node_modules') {
-                const children = generateSidebar(fullPath);
+                const children = generateSidebarChildren(fullPath, `${prefix}${file}/`);
                 if (children.length > 0) {
                   const title = file.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                   items.push({
                     title,
                     collapsable: true,
-                    children: children.map(c => typeof c === 'string' ? `${file}/${c}` : { ...c, path: `${file}/${c.path}` })
+                    children
                   });
                 }
               } else if (file.endsWith('.md') && file !== 'README.md' && !file.startsWith('_')) {
+                // For root level files, use path without extension
                 const name = file.replace('.md', '');
-                items.push(name);
+                items.push(`${prefix}${name}`);
               }
             }
             
             return items;
+          }
+          
+          function generateSidebarChildren(dir, prefix) {
+            const items = [];
+            const files = fs.readdirSync(dir).sort();
+            
+            // Add README first if exists (as empty string for folder index)
+            if (files.includes('README.md')) {
+              items.push('');
+            }
+            
+            for (const file of files) {
+              const fullPath = path.join(dir, file);
+              const stat = fs.statSync(fullPath);
+              
+              if (stat.isFile() && file.endsWith('.md') && file !== 'README.md' && !file.startsWith('_')) {
+                items.push(file.replace('.md', ''));
+              }
+            }
+            
+            return items.map(item => item === '' ? prefix : `${prefix}${item}`);
           }
           
           const sidebar = generateSidebar('docs');
@@ -220,9 +242,10 @@ jobs:
           const configPath = 'docs/.vuepress/config.js';
           let config = fs.readFileSync(configPath, 'utf8');
           
-          // Only update if we have items
+          // Only update if we have items, otherwise keep 'auto'
           if (sidebar.length > 0) {
-            const sidebarConfig = JSON.stringify(['', ...sidebar], null, 2);
+            // VuePress sidebar format: array of strings or objects
+            const sidebarConfig = JSON.stringify(sidebar, null, 2);
             config = config.replace(
               /sidebar:\s*'auto'/,
               `sidebar: ${sidebarConfig}`
