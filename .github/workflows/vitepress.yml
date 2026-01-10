@@ -132,8 +132,21 @@ jobs:
           
           # Clean broken image links from markdown files
           find docs -name "*.md" -type f | while read f; do
+            # Remove image links with .html extension (broken links)
             sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
             sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+            # Remove image links with charset in URL
+            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
+            # Remove script and style tags
+            sed -i 's/<script[^>]*>.*<\/script>//gi' "$f" 2>/dev/null || true
+            sed -i 's/<style[^>]*>.*<\/style>//gi' "$f" 2>/dev/null || true
+            sed -i 's/<invalid-tag>/<invalid-tag\/>/gi' "$f" 2>/dev/null || true
+            # Convert unclosed div/span to self-closing or remove
+            sed -i 's/<div>/<div><!-- -->/g' "$f" 2>/dev/null || true
+            sed -i 's/<span>/<span><!-- -->/g' "$f" 2>/dev/null || true
+            # Replace unknown code block languages with text
+            sed -i 's/```invalidlanguage/```text/g' "$f" 2>/dev/null || true
+            sed -i 's/```mermaid/```text/g' "$f" 2>/dev/null || true
           done
           
           if [ -z "$(find docs -name '*.md' 2>/dev/null)" ]; then

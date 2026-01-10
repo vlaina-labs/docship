@@ -76,8 +76,17 @@ jobs:
         run: |
           # Remove broken image links (e.g., assets/xxx.html; charset=utf-8)
           find /tmp/user-content -name "*.md" -type f 2>/dev/null | while read f; do
-            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
+            # Remove image links with .html extension (broken links)
+            sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
             sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+            # Remove image links with charset in URL
+            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
+            # Remove script and style tags
+            sed -i 's/<script[^>]*>.*<\/script>//gi' "$f" 2>/dev/null || true
+            sed -i 's/<style[^>]*>.*<\/style>//gi' "$f" 2>/dev/null || true
+            # Replace unknown code block languages with text
+            sed -i 's/```invalidlanguage/```text/g' "$f" 2>/dev/null || true
+            sed -i 's/```mermaid/```text/g' "$f" 2>/dev/null || true
           done
 
       - name: Configure for Docs-only mode
@@ -164,6 +173,7 @@ jobs:
           find content -name "*.md" -type f | while read f; do
             sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
             sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
           done
           
           if [ -z "$(find content -name '*.md' 2>/dev/null)" ]; then

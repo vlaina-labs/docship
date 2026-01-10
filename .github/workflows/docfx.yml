@@ -175,8 +175,11 @@ jobs:
           
           # Clean broken image links from markdown files
           find docs -name "*.md" -type f | while read f; do
+            # Remove image links with .html extension (broken links)
             sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
             sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+            # Remove image links with charset in URL
+            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
           done
 
       - name: Generate index and toc

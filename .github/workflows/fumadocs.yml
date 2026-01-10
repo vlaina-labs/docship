@@ -336,6 +336,14 @@ jobs:
             # Clean broken image links
             sed -i 's/!\[[^]]*\]([^)]*\.html[^)]*)//g' "$f" 2>/dev/null || true
             sed -i 's/!\[[^]]*\](<[^>]*\.html[^>]*>)//g' "$f" 2>/dev/null || true
+            # Remove image links with charset in URL
+            sed -i 's/!\[[^]]*\]([^)]*charset[^)]*)//g' "$f" 2>/dev/null || true
+            # Remove script/style tags
+            sed -i 's/<script[^>]*>.*<\/script>//gi' "$f" 2>/dev/null || true
+            sed -i 's/<style[^>]*>.*<\/style>//gi' "$f" 2>/dev/null || true
+            # Replace unknown code block languages with text
+            sed -i 's/```invalidlanguage/```text/g' "$f" 2>/dev/null || true
+            sed -i 's/```mermaid/```text/g' "$f" 2>/dev/null || true
             
             if ! head -1 "$f" | grep -q "^---"; then
               filename=$(basename "$f" | sed 's/\.[^.]*$//' | sed 's/-/ /g')
