@@ -222,28 +222,53 @@ jobs:
           if [ ! -f "index.md" ] && [ ! -f "index.html" ]; then
             if [ -f "README.md" ]; then
               # Use README.md content but add front matter
-              echo "---" > index.md
-              echo "layout: home" >> index.md
-              echo "title: Home" >> index.md
-              echo "---" >> index.md
-              echo "" >> index.md
+              cat > index.md << 'FMEOF'
+---
+layout: home
+title: Home
+---
+
+FMEOF
               cat README.md >> index.md
             else
               FIRST_DOC=$(find . -maxdepth 1 -name "*.md" ! -name "README.md" -type f | sort | head -1)
               if [ -n "$FIRST_DOC" ]; then
-                cp "$FIRST_DOC" index.md
+                cat > index.md << 'FMEOF'
+---
+layout: home
+title: Home
+---
+
+FMEOF
+                cat "$FIRST_DOC" >> index.md
               else
                 cat > index.md << 'INDEXEOF'
-          ---
-          layout: home
-          title: Home
-          ---
+---
+layout: home
+title: Home
+---
 
-          # Welcome
+# Welcome
 
-          Add your markdown files to get started.
-          INDEXEOF
+Add your markdown files to get started.
+INDEXEOF
               fi
+            fi
+          fi
+          
+          # Ensure index.md has proper front matter
+          if [ -f "index.md" ]; then
+            if ! head -1 "index.md" | grep -q "^---"; then
+              TMPFILE=$(mktemp)
+              cat > "$TMPFILE" << 'FMEOF'
+---
+layout: home
+title: Home
+---
+
+FMEOF
+              cat index.md >> "$TMPFILE"
+              mv "$TMPFILE" index.md
             fi
           fi
           
@@ -253,11 +278,13 @@ jobs:
               filename=$(basename "$f" .md)
               title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
               TMPFILE=$(mktemp)
-              echo "---" > "$TMPFILE"
-              echo "layout: page" >> "$TMPFILE"
-              echo "title: $title" >> "$TMPFILE"
-              echo "---" >> "$TMPFILE"
-              echo "" >> "$TMPFILE"
+              cat > "$TMPFILE" << FMEOF
+---
+layout: page
+title: $title
+---
+
+FMEOF
               cat "$f" >> "$TMPFILE"
               mv "$TMPFILE" "$f"
             fi
