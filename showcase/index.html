@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Documentation Showcase</title>
+  <link rel="icon" href="https://github.com/vladelaina.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="toolbar">
+    <span>Preview:</span>
+    <button class="toggle-btn active" data-mode="desktop" onclick="setMode('desktop')">🖥 Desktop</button>
+    <button class="toggle-btn" data-mode="mobile" onclick="setMode('mobile')">📱 Mobile</button>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <div class="hdr"><h3>docsify</h3><a href="#" target="_blank">↗</a></div>
+      <div class="iframe-wrap desktop"><iframe src="https://example.com" loading="lazy"></iframe></div>
+    </div>
+    <div class="card">
+      <div class="hdr"><h3>vitepress</h3><a href="#" target="_blank">↗</a></div>
+      <div class="iframe-wrap desktop"><iframe src="https://example.com" loading="lazy"></iframe></div>
+    </div>
+    <div class="card">
+      <div class="hdr"><h3>docusaurus</h3><a href="#" target="_blank">↗</a></div>
+      <div class="iframe-wrap desktop"><iframe src="https://example.com" loading="lazy"></iframe></div>
+    </div>
+  </div>
+  <div class="ft">
+    Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

@@ -100,13 +100,15 @@ body {
 .iframe-wrap {
   display: flex;
   justify-content: center;
-  background: #fff;
+  background: #e8e8e8;
+  padding: 10px;
+  min-height: 470px;
 }
 
 .iframe-wrap iframe {
   border: none;
   background: #fff;
-  transition: width 0.3s, height 0.3s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .iframe-wrap.desktop iframe {
@@ -117,8 +119,7 @@ body {
 .iframe-wrap.mobile iframe {
   width: 375px;
   height: 667px;
-  border-left: 1px solid #eee;
-  border-right: 1px solid #eee;
+  border-radius: 20px;
 }
 
 .ft {
