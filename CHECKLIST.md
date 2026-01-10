@@ -172,6 +172,7 @@ Before releasing a theme, test with:
 - [ ] Config uses `nextra()` wrapper with `contentDirBasePath` option
 - [ ] Homepage redirect to `/docs` since content is under `/docs` route
 - [ ] Nextra uses MDX - user content with `${}`, `<>`, `{}` may cause JSX parsing errors
+- [ ] Set `staticImage: false` to prevent build failures from invalid image paths
 
 ## Multi-Language Support
 

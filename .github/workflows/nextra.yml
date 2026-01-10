@@ -83,7 +83,8 @@ jobs:
           import nextra from 'nextra';
 
           const withNextra = nextra({
-            contentDirBasePath: '/docs'
+            contentDirBasePath: '/docs',
+            staticImage: false
           });
 
           export default withNextra({
