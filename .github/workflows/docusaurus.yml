@@ -74,7 +74,7 @@ jobs:
 
       - name: Sanitize markdown files
         run: |
-          curl -sL https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh -o /tmp/sanitize.sh
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
           chmod +x /tmp/sanitize.sh
           /tmp/sanitize.sh /tmp/user-content
 

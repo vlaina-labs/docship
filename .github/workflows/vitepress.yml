@@ -54,11 +54,17 @@ jobs:
             esac
           done
 
-      - name: Download and run sanitizer
+      - name: Run sanitizer
         run: |
-          curl -sL https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh -o /tmp/sanitize.sh
-          chmod +x /tmp/sanitize.sh
-          /tmp/sanitize.sh /tmp/user-content
+          # Try local script first, fallback to download with cache bust
+          if [ -f "scripts/sanitize.sh" ]; then
+            chmod +x scripts/sanitize.sh
+            ./scripts/sanitize.sh /tmp/user-content
+          else
+            curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
+            chmod +x /tmp/sanitize.sh
+            /tmp/sanitize.sh /tmp/user-content
+          fi
 
       - name: Setup VitePress project
         env:

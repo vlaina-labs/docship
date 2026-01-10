@@ -53,13 +53,14 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i 's/<button[^>]*>[^<]*<\/button>//gi' "$f" 2>/dev/null || true
   
   # Remove malformed HTML tags (duplicate attributes, missing quotes, etc.)
-  # These cause Vue compiler errors
-  sed -i -E 's/<div[^>]*class="[^"]*"class="[^"]*"[^>]*>//gi' "$f" 2>/dev/null || true
-  sed -i -E "s/<div[^>]*class='[^']*'[^>]*>//gi" "$f" 2>/dev/null || true
-  sed -i 's/<div class=noquotes>//gi' "$f" 2>/dev/null || true
-  # Remove tags with unquoted attribute values containing special chars
-  sed -i -E 's/<div[^>]*=[a-zA-Z]*["'"'"'][^>]*>//gi' "$f" 2>/dev/null || true
-  sed -i -E 's/<div data-x=[^"'"'"' >][^>]*>//gi' "$f" 2>/dev/null || true
+  # These cause Vue compiler errors - be aggressive and remove entire lines
+  sed -i '/<div[^>]*class="[^"]*"class=/d' "$f" 2>/dev/null || true
+  sed -i "/<div[^>]*class='[^']*'/d" "$f" 2>/dev/null || true
+  sed -i '/<div class=noquotes>/d' "$f" 2>/dev/null || true
+  sed -i '/<div class=[^"'"'"' >]/d' "$f" 2>/dev/null || true
+  sed -i '/<div data-x=[^"'"'"' >]/d' "$f" 2>/dev/null || true
+  # Remove any tag with unquoted attributes containing special chars
+  sed -i '/<[a-z]*[^>]*=[a-zA-Z]*['"'"'"<>=`]/d' "$f" 2>/dev/null || true
   
   # Remove event handlers
   sed -i -E 's/ on[a-z]+="[^"]*"//gi' "$f" 2>/dev/null || true
