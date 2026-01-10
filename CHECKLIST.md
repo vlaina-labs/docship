@@ -143,6 +143,11 @@ Before releasing a theme, test with:
 | `Entry docs → 404 was not found` | No valid index page | Ensure index.md/mdx exists with frontmatter |
 | `item.items.map is not a function` | Rspress sidebar `items: 'auto'` | Use array of items, not string |
 | `Failed to read favicon` (Rspress) | Wrong public directory path | Put assets in `docs/public/` |
+| `Module not found: Can't resolve './assets/...'` | Invalid image path in markdown | Set `remarkImageOptions: false` (Fumadocs) or `staticImage: false` (Nextra) |
+| `Unrecognized keys: "theme", "themeConfig"` | Nextra v4 API changed | Use new `nextra()` config format |
+| `Export doesn't exist in target module` | Simplified source.ts missing exports | Delete files that depend on removed exports (e.g., `app/og`, `app/llms-full.txt`) |
+| `fatal: No url found for submodule path` | Downloaded repo folder treated as submodule | Add folder to `.gitignore` or `git rm -r --cached folder` |
+| `shallow cloned, latest modified time not presented` | GitHub Actions shallow clone | Warning only, can ignore or use `fetch-depth: 0` |
 
 ## Fumadocs Configuration
 
@@ -181,9 +186,72 @@ Before releasing a theme, test with:
 - [ ] Uses CDN for docute.js and docute.css (`unpkg.com/docute@4`)
 - [ ] URL routing: `/` => `/README.md`, `/foo` => `/foo.md`, `/foo/` => `/foo/README.md`
 - [ ] Sidebar must be manually configured or auto-generated via script
-- [ ] Logo is a Vue template string
+- [ ] Logo is a Vue template string - use `<span>` wrapper with flex layout for avatar + text
 - [ ] Use `darkThemeToggler: true` for dark mode toggle
 - [ ] No npm cache needed since no build process
+
+## General Lessons Learned
+
+### Framework Categories
+
+1. **Build-required frameworks** (need npm install + build):
+   - Docusaurus, VitePress, Starlight, Rspress, Fumadocs, Nextra
+   - Need npm cache for faster builds
+   - Output to specific directories (build/, dist/, out/, doc_build/)
+
+2. **Pure frontend frameworks** (no build, CDN-based):
+   - Docsify, Docute
+   - Just HTML + markdown files
+   - Faster deployment, simpler setup
+
+3. **Next.js-based frameworks**:
+   - Fumadocs, Nextra
+   - Require `output: 'export'` for static build
+   - Require `images: { unoptimized: true }` for static export
+   - Use `basePath` for GitHub Pages subdirectory
+
+### Common Pitfalls
+
+- [ ] **Image handling**: MDX/Next.js frameworks try to import images - disable with `remarkImageOptions: false` or `staticImage: false`
+- [ ] **Template default content**: Many templates include "Hello World" or demo content - clear before copying user content
+- [ ] **CLI argument changes**: Framework CLIs change frequently - check latest docs (e.g., `create-fumadocs-app` changed from `--name --template --src` to `--template +next+fuma-docs-mdx+static`)
+- [ ] **API version changes**: Check for breaking changes (e.g., Starlight social config changed from object to array)
+- [ ] **Sidebar in sidebar**: Some frameworks show index page in sidebar - use `index: true` frontmatter to hide it
+
+### Branding Consistency
+
+For all frameworks, implement:
+- [ ] Logo: User avatar + `username/reponame` in top-left
+- [ ] Favicon: User's GitHub avatar (`https://github.com/USERNAME.png`)
+- [ ] GitHub link: Icon or text link to repository
+- [ ] Title: `username/reponame` in browser tab
+
+### Logo Implementation Patterns
+
+| Framework | Logo Config |
+|-----------|-------------|
+| Docusaurus | `navbar.logo.src` + `navbar.title` |
+| VitePress | `themeConfig.logo` + `themeConfig.siteTitle` |
+| Fumadocs | `nav.title` as JSX with `<img>` + `<span>` |
+| Nextra | `Navbar logo` prop as JSX |
+| Docute | `logo` as Vue template string |
+| Starlight | `logo.src` + `title` |
+
+### Sidebar Generation
+
+- [ ] Auto-generate from directory structure when possible
+- [ ] Convert filenames to titles: `my-file.md` → `My File`
+- [ ] Handle nested directories as collapsible groups
+- [ ] Skip `README.md` / `index.md` from sidebar items (they're folder landing pages)
+- [ ] Use `sort` for consistent ordering
+
+### Testing Checklist (Updated)
+
+- [ ] Files with invalid image paths (should not break build)
+- [ ] Files with special markdown syntax (`${}`, `<>`, `{}`, `{{ }}`)
+- [ ] Empty repository (should show welcome page)
+- [ ] Nested folder structure (should generate proper sidebar)
+- [ ] Repository without index.md (should use first doc as homepage)
 
 ## Multi-Language Support
 
