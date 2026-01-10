@@ -256,6 +256,20 @@ Before releasing a theme, test with:
 - [ ] Use `darkThemeToggler: true` for dark mode toggle
 - [ ] No npm cache needed since no build process
 
+## Hexo Configuration
+
+- [ ] Hexo is a blog framework - uses `hexo init` to initialize
+- [ ] Requires Node.js 20+ (per package.json engines)
+- [ ] Content goes in `source/_posts/` directory (as posts)
+- [ ] Output directory is `public`
+- [ ] Config file is `_config.yml`
+- [ ] Use `root: /${REPO_NAME}/` for GitHub Pages subdirectory
+- [ ] Default theme is `landscape` (no ads)
+- [ ] Every markdown file needs frontmatter with `title` and `date` - auto-add if missing
+- [ ] Use `after_render:html` filter in `scripts/` to inject custom content (logo, favicon, footer)
+- [ ] Clear default posts from `source/_posts/` before copying user content
+- [ ] Subdirectories go to `source/{dirname}/` as pages (not posts)
+
 ## General Lessons Learned
 
 ### Framework Categories
@@ -317,6 +331,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | Docsify | `https://github.com/docsifyjs/docsify` |
 | MkDocs Material | `https://github.com/squidfunk/mkdocs-material` |
 | VuePress | `https://github.com/vuejs/vuepress` |
+| Hexo | `https://github.com/hexojs/hexo` |
 
 ### Logo Implementation Patterns
 
@@ -330,6 +345,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | DocFX | Custom template JS to replace `#logo` element |
 | VuePress | `themeConfig.logo` (external URL supported) |
 | Starlight | `logo.src` + `title` |
+| Hexo | Custom inject script via `after_render:html` filter |
 
 ### Sidebar Generation
 
