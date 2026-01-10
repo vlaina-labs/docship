@@ -223,8 +223,40 @@ Before releasing a theme, test with:
 For all frameworks, implement:
 - [ ] Logo: User avatar + `username/reponame` in top-left
 - [ ] Favicon: User's GitHub avatar (`https://github.com/USERNAME.png`)
-- [ ] GitHub link: Icon or text link to repository
+- [ ] GitHub link: Icon or text link to repository (right side of navbar)
 - [ ] Title: `username/reponame` in browser tab
+- [ ] Footer: `Powered by NekoTick · {Framework}` with links to both projects
+
+### Footer Format
+
+All workflows must include a footer with attribution:
+```
+Powered by NekoTick · {Framework}
+```
+
+- NekoTick link: `https://github.com/NekoTick/NekoTick`
+- Framework link: GitHub repository of the framework (not official website)
+- NekoTick comes first (deployment service provider)
+- Framework comes second (underlying tool)
+- Use `·` as separator
+
+Example HTML:
+```html
+<span>Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/{org}/{framework}" target="_blank">Framework</a></span>
+```
+
+| Framework | GitHub Link |
+|-----------|-------------|
+| Docusaurus | `https://github.com/facebook/docusaurus` |
+| VitePress | `https://github.com/vuejs/vitepress` |
+| Starlight | `https://github.com/withastro/starlight` |
+| Rspress | `https://github.com/web-infra-dev/rspress` |
+| Fumadocs | `https://github.com/fuma-nama/fumadocs` |
+| Nextra | `https://github.com/shuding/nextra` |
+| Docute | `https://github.com/egoist/docute` |
+| DocFX | `https://github.com/dotnet/docfx` |
+| Docsify | `https://github.com/docsifyjs/docsify` |
+| MkDocs Material | `https://github.com/squidfunk/mkdocs-material` |
 
 ### Logo Implementation Patterns
 
