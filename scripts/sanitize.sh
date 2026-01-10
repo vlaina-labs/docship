@@ -10,6 +10,10 @@ echo "🧹 Sanitizing markdown files in: $CONTENT_DIR"
 find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r f; do
   echo "  Processing: $f"
   
+  # ===== STEP 0: CONVERT CRLF TO LF =====
+  # This must be done first to ensure all sed patterns work correctly
+  sed -i 's/\r$//' "$f" 2>/dev/null || true
+  
   # ===== STEP 1: REMOVE ALL IMAGES =====
   sed -i -E 's/!\[[^]]*\]\([^)]*\)//g' "$f" 2>/dev/null || true
   sed -i -E 's/!\[[^]]*\]\[[^]]*\]//g' "$f" 2>/dev/null || true
@@ -54,8 +58,6 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   
   # Remove malformed HTML tags (duplicate attributes, missing quotes, etc.)
   # These cause Vue compiler errors - be aggressive and remove entire lines
-  # First convert CRLF to LF to ensure sed patterns work
-  sed -i 's/\r$//' "$f" 2>/dev/null || true
   # Remove lines with duplicate class attributes
   sed -i '/class="[^"]*"class=/d' "$f" 2>/dev/null || true
   # Remove lines with single-quoted class
