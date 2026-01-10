@@ -67,6 +67,9 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   
   # ===== STEP 5: REMOVE SSI =====
   sed -i 's/<!--#[^-]*-->//gi' "$f" 2>/dev/null || true
+  # Remove unclosed HTML comments (cause Vue EOF error)
+  sed -i '/^<!--[^>]*$/d' "$f" 2>/dev/null || true
+  sed -i 's/<!-- unclosed//g' "$f" 2>/dev/null || true
   
   # ===== STEP 6: REMOVE VUE/REACT COMPONENTS =====
   sed -i -E 's/<[A-Z][a-zA-Z]*[^>]*\/>//g' "$f" 2>/dev/null || true
@@ -183,13 +186,13 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
     /^~~~/ { in_code = !in_code; print; next }
     {
       if (!in_code) {
-        # Remove {`...`} template literal expressions
-        gsub(/\{\`[^\`]*\`\}/, "")
-        # Remove lines that are just backtick expressions like {`template ${literal}`}
-        if ($0 ~ /^\{`.*`\}$/) { print ""; next }
+        # Remove {`...`} template literal expressions (including nested ${})
+        gsub(/\{`[^`]*`\}/, "")
+        # Remove lines containing backtick with ${} inside
+        if ($0 ~ /`[^`]*\$\{[^}]*\}[^`]*`/) { gsub(/`[^`]*\$\{[^}]*\}[^`]*`/, "code") }
         # Remove ${...} template expressions
         gsub(/\$\{[^}]*\}/, "")
-        # Remove standalone backtick expressions that might trigger {% raw %}
+        # Remove any remaining backtick expressions that might trigger {% raw %}
         gsub(/`[^`]*\$[^`]*`/, "code")
       }
       print
