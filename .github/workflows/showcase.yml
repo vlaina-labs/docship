@@ -94,6 +94,12 @@ jobs:
       base_path_suffix: nextra
       deploy: false
 
+  build-jekyll:
+    uses: ./.github/workflows/jekyll.yml
+    with:
+      base_path_suffix: jekyll
+      deploy: false
+
   # Combine all build artifacts and create showcase page
   combine:
     needs:
@@ -109,6 +115,7 @@ jobs:
       - build-docfx
       - build-fumadocs
       - build-nextra
+      - build-jekyll
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
