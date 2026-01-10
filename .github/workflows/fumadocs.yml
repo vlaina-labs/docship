@@ -79,9 +79,7 @@ jobs:
 
           export default defineConfig({
             mdxOptions: {
-              remarkImageOptions: {
-                onError: 'ignore',
-              },
+              remarkImageOptions: false,
             },
           });
           EOF
