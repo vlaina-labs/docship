@@ -203,11 +203,24 @@ jobs:
             ./scripts/sanitize.sh .
           fi
           
-          # Debug: show lines around 22 and look for HTML tags
-          echo "=== docs/test/test-framework-specific.md lines 1-30 AFTER sanitize ==="
-          head -30 docs/test/test-framework-specific.md
-          echo "=== All lines with < in the file ==="
-          grep -n '<' docs/test/test-framework-specific.md | head -20
+          # Debug: comprehensive check
+          echo "=== docs/test/test-framework-specific.md FULL CONTENT (first 50 lines) ==="
+          head -50 docs/test/test-framework-specific.md | cat -A
+          echo ""
+          echo "=== Line 22 with cat -A (show special chars) ==="
+          sed -n '22p' docs/test/test-framework-specific.md | cat -A
+          echo ""
+          echo "=== Lines 20-25 ==="
+          sed -n '20,25p' docs/test/test-framework-specific.md | cat -A
+          echo ""
+          echo "=== All < in entire file ==="
+          grep -n '<' docs/test/test-framework-specific.md || echo "NONE"
+          echo ""
+          echo "=== Check test/ directory (not docs/test/) ==="
+          grep -n '<' test/test-framework-specific.md | head -5 || echo "NONE"
+          echo ""
+          echo "=== File sizes ==="
+          wc -l docs/test/test-framework-specific.md test/test-framework-specific.md
           
           rm -rf .vitepress/cache node_modules/.vite
           npx vitepress build
