@@ -71,9 +71,15 @@ jobs:
               "dest": "_site",
               "globalMetadata": {
                 "_appTitle": "${OWNER}/${REPO_NAME}",
-                "_appName": "${REPO_NAME}",
+                "_appName": "${OWNER}/${REPO_NAME}",
+                "_appLogoPath": "${AVATAR_URL}",
                 "_appFaviconPath": "${AVATAR_URL}",
-                "_enableSearch": true
+                "_appFooter": " ",
+                "_enableSearch": true,
+                "_gitContribute": {
+                  "repo": "https://github.com/${OWNER}/${REPO_NAME}",
+                  "branch": "main"
+                }
               },
               "template": ["default", "modern"]
             }
