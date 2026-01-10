@@ -56,15 +56,25 @@ jobs:
 
       - name: Run sanitizer
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Checking for scripts/sanitize.sh..."
+          ls -la scripts/ 2>/dev/null || echo "scripts/ directory not found"
+          
           # Try local script first, fallback to download with cache bust
           if [ -f "scripts/sanitize.sh" ]; then
+            echo "Using local sanitize.sh"
             chmod +x scripts/sanitize.sh
             ./scripts/sanitize.sh /tmp/user-content
           else
+            echo "Downloading sanitize.sh from GitHub"
             curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/sanitize.sh?$(date +%s)" -o /tmp/sanitize.sh
             chmod +x /tmp/sanitize.sh
             /tmp/sanitize.sh /tmp/user-content
           fi
+          
+          # Debug: show what's in test directory after sanitization
+          echo "=== Content of test-parser-killer.md (lines 215-225) ==="
+          sed -n '215,225p' /tmp/user-content/test/test-parser-killer.md 2>/dev/null || echo "File not found"
 
       - name: Setup VitePress project
         env:
