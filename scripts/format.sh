@@ -43,6 +43,34 @@ function remarkRemoveHtml() {
   }
 }
 
+// Remove template syntax from text nodes ({{ }}, {% %}, {# #}, etc.)
+function remarkRemoveTemplateSyntax() {
+  return (tree) => {
+    visit(tree, 'text', (node) => {
+      if (node.value) {
+        // Remove {{ ... }} (Vue, Jinja, Nunjucks, Liquid)
+        node.value = node.value.replace(/\{\{[^}]*\}\}/g, '')
+        // Remove {% ... %} (Jinja, Nunjucks, Liquid)
+        node.value = node.value.replace(/\{%[^%]*%\}/g, '')
+        // Remove {# ... #} (Jinja comments)
+        node.value = node.value.replace(/\{#[^#]*#\}/g, '')
+        // Remove remaining {{ or }} (malformed)
+        node.value = node.value.replace(/\{\{/g, '')
+        node.value = node.value.replace(/\}\}/g, '')
+        node.value = node.value.replace(/\{%/g, '')
+        node.value = node.value.replace(/%\}/g, '')
+      }
+    })
+    // Also check inline code - some frameworks parse these too
+    visit(tree, 'inlineCode', (node) => {
+      if (node.value) {
+        node.value = node.value.replace(/\{\{[^}]*\}\}/g, 'code')
+        node.value = node.value.replace(/\{%[^%]*%\}/g, 'code')
+      }
+    })
+  }
+}
+
 // Normalize code block languages
 function remarkNormalizeCodeLang() {
   const validLangs = new Set([
@@ -75,6 +103,7 @@ export const processor = unified()
   .use(remarkFrontmatter, ['yaml', 'toml'])
   .use(remarkGfm)
   .use(remarkRemoveHtml)
+  .use(remarkRemoveTemplateSyntax)
   .use(remarkNormalizeCodeLang)
   .use(remarkStringify, {
     bullet: '-',
