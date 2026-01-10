@@ -152,10 +152,13 @@ Before releasing a theme, test with:
 - [ ] Content goes in `content/docs/` directory
 - [ ] Output directory is `out` (Next.js static export default)
 - [ ] Every `.mdx` file should have frontmatter with `title` and `description`
-- [ ] Use `create-fumadocs-app` with `--template next --src fumadocs-mdx` for non-interactive setup
+- [ ] Use `create-fumadocs-app` with `--template +next+fuma-docs-mdx+static` for static export
 - [ ] Fumadocs MDX is the official content source
 - [ ] Config file is `next.config.mjs` (ESM)
 - [ ] Requires `fumadocs-mdx/next` plugin wrapper
+- [ ] Set `remarkImageOptions: false` in `source.config.ts` to prevent build failures from invalid image paths
+- [ ] Delete `app/llms-full.txt` and `app/og` directories (they depend on exports not in simplified source.ts)
+- [ ] Clear template's default `content/docs/*` before copying user content (removes Hello World page)
 
 ## Multi-Language Support
 
