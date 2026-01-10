@@ -106,12 +106,20 @@ find "$CONTENT_DIR" -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r 
   sed -i -E 's/<div[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show|v-html|v-text|v-pre|v-cloak|v-once)[^>]*>[^<]*<\/div>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<[a-z]+[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show|v-html|v-text|v-pre|v-cloak|v-once)[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<[a-z]+[^>]*(v-if|v-for|v-bind|v-on|v-model|v-slot|v-show)[^>]*>//gi' "$f" 2>/dev/null || true
-  # Remove tags with Vue shorthand syntax - #slot (v-slot shorthand)
-  # Pattern: <tag #name> or <tag #name="value">
-  sed -i '/<[a-z][a-z]* #/d' "$f" 2>/dev/null || true
-  # Remove tags with :prop (v-bind shorthand) or @event (v-on shorthand)
-  sed -i '/<[a-z][a-z]* :/d' "$f" 2>/dev/null || true
-  sed -i '/<[a-z][a-z]* @/d' "$f" 2>/dev/null || true
+  # Remove lines with Vue shorthand syntax: #slot, :bind, @event (explicit patterns)
+  sed -i '/<div #/d' "$f" 2>/dev/null || true
+  sed -i '/<div :/d' "$f" 2>/dev/null || true
+  sed -i '/<div @/d' "$f" 2>/dev/null || true
+  sed -i '/<span #/d' "$f" 2>/dev/null || true
+  sed -i '/<span :/d' "$f" 2>/dev/null || true
+  sed -i '/<span @/d' "$f" 2>/dev/null || true
+  sed -i '/<p #/d' "$f" 2>/dev/null || true
+  sed -i '/<p :/d' "$f" 2>/dev/null || true
+  sed -i '/<p @/d' "$f" 2>/dev/null || true
+  sed -i '/<a #/d' "$f" 2>/dev/null || true
+  sed -i '/<a :/d' "$f" 2>/dev/null || true
+  sed -i '/<a @/d' "$f" 2>/dev/null || true
+  sed -i '/<template #/d' "$f" 2>/dev/null || true
   # Remove tags with :prop or @event
   sed -i -E 's/<[a-z]+[^>]*:[a-z]+="[^"]*"[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
   sed -i -E 's/<[a-z]+[^>]*@[a-z]+="[^"]*"[^>]*>[^<]*<\/[a-z]+>//gi' "$f" 2>/dev/null || true
