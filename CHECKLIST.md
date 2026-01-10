@@ -181,6 +181,22 @@ Before releasing a theme, test with:
 - [ ] Nextra uses MDX - user content with `${}`, `<>`, `{}` may cause JSX parsing errors
 - [ ] Set `staticImage: false` to prevent build failures from invalid image paths
 
+## VuePress Configuration
+
+- [ ] VuePress 1.x is Vue 2 based - use `vuepress@^1.9.10`
+- [ ] Content goes in `docs/` directory
+- [ ] Output directory is `docs/.vuepress/dist`
+- [ ] Config file is `docs/.vuepress/config.js`
+- [ ] Use `base: '/${REPO_NAME}/'` for GitHub Pages subdirectory
+- [ ] `themeConfig.logo` supports external URLs directly
+- [ ] `themeConfig.sidebar: 'auto'` only shows current page headings - need manual config for full sidebar
+- [ ] Homepage is `docs/README.md` (not `index.md`)
+- [ ] Use `themeConfig.repo` for GitHub link in navbar
+- [ ] Custom styles go in `docs/.vuepress/styles/index.styl` (Stylus)
+- [ ] Use `enhanceApp.js` for client-side customizations (e.g., footer injection)
+- [ ] Favicon via `head: [['link', { rel: 'icon', href: 'URL' }]]` - supports external URLs
+- [ ] VuePress uses Vue template syntax - `{{ }}` in markdown will be parsed as Vue expressions
+
 ## DocFX Configuration
 
 - [ ] DocFX is a .NET-based documentation framework - uses `dotnet tool install -g docfx`
@@ -316,6 +332,7 @@ Example HTML:
 | DocFX | `https://github.com/dotnet/docfx` |
 | Docsify | `https://github.com/docsifyjs/docsify` |
 | MkDocs Material | `https://github.com/squidfunk/mkdocs-material` |
+| VuePress | `https://github.com/vuejs/vuepress` |
 
 ### Logo Implementation Patterns
 
@@ -327,6 +344,7 @@ Example HTML:
 | Nextra | `Navbar logo` prop as JSX |
 | Docute | `logo` as Vue template string |
 | DocFX | Custom template JS to replace `#logo` element |
+| VuePress | `themeConfig.logo` (external URL supported) |
 | Starlight | `logo.src` + `title` |
 
 ### Sidebar Generation

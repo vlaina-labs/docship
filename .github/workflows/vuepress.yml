@@ -1,0 +1,256 @@
+name: Deploy VuePress to GitHub Pages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-vuepress-${{ runner.os }}
+          restore-keys: npm-vuepress-
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|node_modules/|.vuepress/|fumadocs/|nextra/|docute/|docfx/|docsify/|docusaurus/|vitepress/|starlight/|rspress/|mkdocs/|vuepress/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Check if already initialized
+        id: check
+        run: |
+          if [ -f "package.json" ] && grep -q "vuepress" package.json 2>/dev/null; then
+            echo "initialized=true" >> $GITHUB_OUTPUT
+          else
+            echo "initialized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create VuePress project
+        if: steps.check.outputs.initialized == 'false'
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          
+          cat > package.json << 'EOF'
+          {
+            "name": "vuepress-docs",
+            "private": true,
+            "scripts": {
+              "dev": "vuepress dev docs",
+              "build": "vuepress build docs"
+            },
+            "devDependencies": {
+              "vuepress": "^1.9.10"
+            }
+          }
+          EOF
+          
+          mkdir -p docs/.vuepress/public
+          
+          # Create VuePress config
+          cat > docs/.vuepress/config.js << CONFIGEOF
+          module.exports = {
+            title: '${OWNER}/${REPO_NAME}',
+            description: 'Documentation for ${OWNER}/${REPO_NAME}',
+            base: '/${REPO_NAME}/',
+            head: [
+              ['link', { rel: 'icon', href: '${AVATAR_URL}' }]
+            ],
+            themeConfig: {
+              logo: '${AVATAR_URL}',
+              nav: [
+                { text: 'GitHub', link: '${GITHUB_URL}' }
+              ],
+              sidebar: 'auto',
+              sidebarDepth: 2,
+              lastUpdated: 'Last Updated',
+              repo: '${OWNER}/${REPO_NAME}',
+              repoLabel: 'GitHub',
+              editLinks: false
+            },
+            markdown: {
+              lineNumbers: true
+            }
+          }
+          CONFIGEOF
+          
+          # Create enhanceApp.js to add footer
+          cat > docs/.vuepress/enhanceApp.js << 'ENHANCEOF'
+          export default ({ router }) => {
+            if (typeof window !== 'undefined') {
+              router.afterEach(() => {
+                setTimeout(() => {
+                  // Add footer if not exists
+                  if (!document.querySelector('.custom-footer')) {
+                    const footer = document.createElement('div');
+                    footer.className = 'custom-footer';
+                    footer.innerHTML = 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/vuejs/vuepress" target="_blank">VuePress</a>';
+                    footer.style.cssText = 'text-align: center; padding: 2rem 0; color: #4e6e8e; font-size: 0.9rem; border-top: 1px solid #eaecef; margin-top: 2rem;';
+                    const page = document.querySelector('.page');
+                    if (page && !page.querySelector('.custom-footer')) {
+                      page.appendChild(footer);
+                    }
+                  }
+                }, 100);
+              });
+            }
+          }
+          ENHANCEOF
+          
+          # Create custom styles
+          mkdir -p docs/.vuepress/styles
+          cat > docs/.vuepress/styles/index.styl << 'STYLEOF'
+          .navbar .logo
+            border-radius 50%
+            width 24px
+            height 24px
+            margin-right 8px
+          
+          .custom-footer a
+            color #3eaf7c
+            text-decoration none
+          
+          .custom-footer a:hover
+            text-decoration underline
+          STYLEOF
+
+      - name: Copy user content
+        run: |
+          mkdir -p docs
+          
+          if [ -d "/tmp/user-content" ]; then
+            # Copy markdown files
+            find /tmp/user-content -maxdepth 1 -type f -name "*.md" -exec cp {} docs/ \; 2>/dev/null || true
+            
+            # Copy directories
+            for dir in /tmp/user-content/*/; do
+              if [ -d "$dir" ]; then
+                dirname=$(basename "$dir")
+                case "$dirname" in
+                  .vuepress|node_modules) ;;
+                  *) cp -r "$dir" "docs/" 2>/dev/null || true ;;
+                esac
+              fi
+            done
+          fi
+          
+          # Create README.md (homepage) if not exists
+          if [ ! -f "docs/README.md" ]; then
+            FIRST_DOC=$(find docs -maxdepth 1 -type f -name "*.md" ! -name "README.md" 2>/dev/null | sort | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              cp "$FIRST_DOC" docs/README.md
+            else
+              REPO_NAME="${GITHUB_REPOSITORY#*/}"
+              OWNER="${GITHUB_REPOSITORY_OWNER}"
+              cat > docs/README.md << READMEOF
+          # Welcome
+
+          This is the documentation for ${OWNER}/${REPO_NAME}.
+
+          Add markdown files to get started.
+          READMEOF
+            fi
+          fi
+
+      - name: Generate sidebar config
+        run: |
+          # Generate sidebar from directory structure
+          node << 'NODEOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          function generateSidebar(dir) {
+            const items = [];
+            const files = fs.readdirSync(dir).sort();
+            
+            for (const file of files) {
+              const fullPath = path.join(dir, file);
+              const stat = fs.statSync(fullPath);
+              
+              if (stat.isDirectory() && !file.startsWith('.') && !file.startsWith('_') && file !== 'node_modules') {
+                const children = generateSidebar(fullPath);
+                if (children.length > 0) {
+                  const title = file.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                  items.push({
+                    title,
+                    collapsable: true,
+                    children: children.map(c => typeof c === 'string' ? `${file}/${c}` : { ...c, path: `${file}/${c.path}` })
+                  });
+                }
+              } else if (file.endsWith('.md') && file !== 'README.md' && !file.startsWith('_')) {
+                const name = file.replace('.md', '');
+                items.push(name);
+              }
+            }
+            
+            return items;
+          }
+          
+          const sidebar = generateSidebar('docs');
+          
+          // Read existing config and update sidebar
+          const configPath = 'docs/.vuepress/config.js';
+          let config = fs.readFileSync(configPath, 'utf8');
+          
+          // Only update if we have items
+          if (sidebar.length > 0) {
+            const sidebarConfig = JSON.stringify(['', ...sidebar], null, 2);
+            config = config.replace(
+              /sidebar:\s*'auto'/,
+              `sidebar: ${sidebarConfig}`
+            );
+            fs.writeFileSync(configPath, config);
+          }
+          NODEOF
+
+      - name: Install dependencies and Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vuepress/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
