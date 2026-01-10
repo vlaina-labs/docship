@@ -59,133 +59,78 @@ jobs:
           
           # Create Gemfile
           cat > Gemfile << 'GEMEOF'
-          source "https://rubygems.org"
-          gem "jekyll", "~> 4.3"
-          gem "minima", "~> 2.5"
-          gem "jekyll-feed"
-          gem "jekyll-seo-tag"
-          GEMEOF
+source "https://rubygems.org"
+gem "jekyll", "~> 4.3"
+gem "just-the-docs", "~> 0.10"
+GEMEOF
           
           # Create _config.yml
           cat > _config.yml << CONFIGEOF
-          title: ${OWNER}/${REPO_NAME}
-          description: Documentation for ${OWNER}/${REPO_NAME}
-          baseurl: "${BASE_PATH}"
-          url: "https://${OWNER}.github.io"
+title: ${OWNER}/${REPO_NAME}
+description: Documentation for ${OWNER}/${REPO_NAME}
+baseurl: "${BASE_PATH}"
+url: "https://${OWNER}.github.io"
+
+theme: just-the-docs
+
+favicon_ico: "${AVATAR_URL}"
+
+logo: "${AVATAR_URL}"
+
+aux_links:
+  GitHub: "${GITHUB_URL}"
+
+aux_links_new_tab: true
+
+nav_external_links:
+  - title: GitHub
+    url: "${GITHUB_URL}"
+
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+  preview_words_before: 5
+  preview_words_after: 10
+
+heading_anchors: true
+
+back_to_top: true
+back_to_top_text: "Back to top"
+
+footer_content: "Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> · <a href=\"https://github.com/just-the-docs/just-the-docs\" target=\"_blank\">Just the Docs</a>"
+
+color_scheme: light
+
+callouts:
+  note:
+    title: Note
+    color: blue
+  warning:
+    title: Warning
+    color: yellow
+  danger:
+    title: Danger
+    color: red
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+CONFIGEOF
           
-          theme: minima
+          # Create _sass directory for custom styles
+          mkdir -p _sass/custom
           
-          plugins:
-            - jekyll-feed
-            - jekyll-seo-tag
-          
-          header_pages: []
-          
-          minima:
-            skin: auto
-            social_links:
-              - { platform: github, user_url: "${GITHUB_URL}" }
-          
-          defaults:
-            - scope:
-                path: ""
-                type: "pages"
-              values:
-                layout: "page"
-            - scope:
-                path: ""
-                type: "posts"
-              values:
-                layout: "post"
-          
-          exclude:
-            - Gemfile
-            - Gemfile.lock
-            - node_modules
-            - vendor
-          CONFIGEOF
-          
-          # Create _includes directory for custom head
-          mkdir -p _includes
-          
-          # Custom head for favicon
-          cat > _includes/custom-head.html << HEADEOF
-          <link rel="icon" href="${AVATAR_URL}">
-          <link rel="shortcut icon" href="${AVATAR_URL}">
-          HEADEOF
-          
-          # Create _layouts directory
-          mkdir -p _layouts
-          
-          # Custom default layout with footer
-          cat > _layouts/default.html << 'LAYOUTEOF'
-          <!DOCTYPE html>
-          <html lang="{{ page.lang | default: site.lang | default: "en" }}">
-          <head>
-            <meta charset="utf-8">
-            <meta http-equiv="X-UA-Compatible" content="IE=edge">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            {%- seo -%}
-            <link rel="stylesheet" href="{{ "/assets/main.css" | relative_url }}">
-            {%- feed_meta -%}
-            {%- include custom-head.html -%}
-          </head>
-          <body>
-            {%- include header.html -%}
-            <main class="page-content" aria-label="Content">
-              <div class="wrapper">
-                {{ content }}
-              </div>
-            </main>
-            <footer class="site-footer h-card">
-              <div class="wrapper">
-                <div class="footer-col-wrapper">
-                  <div class="footer-col" style="text-align: center; width: 100%;">
-                    <p>Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/jekyll/jekyll" target="_blank">Jekyll</a></p>
-                  </div>
-                </div>
-              </div>
-            </footer>
-          </body>
-          </html>
-          LAYOUTEOF
-          
-          # Page layout
-          cat > _layouts/page.html << 'PAGELAYOUTEOF'
-          ---
-          layout: default
-          ---
-          <article class="post">
-            <header class="post-header">
-              <h1 class="post-title">{{ page.title | escape }}</h1>
-            </header>
-            <div class="post-content">
-              {{ content }}
-            </div>
-          </article>
-          PAGELAYOUTEOF
-          
-          # Home layout
-          cat > _layouts/home.html << 'HOMELAYOUTEOF'
-          ---
-          layout: default
-          ---
-          <div class="home">
-            {{ content }}
-            {%- if site.pages.size > 0 -%}
-            <h2 class="post-list-heading">Pages</h2>
-            <ul class="post-list">
-              {%- for page in site.pages -%}
-              {%- if page.title and page.url != "/" and page.url != "/index.html" -%}
-              <li>
-                <a class="post-link" href="{{ page.url | relative_url }}">{{ page.title | escape }}</a>
-              </li>
-              {%- endif -%}
-              {%- endfor -%}
-            </ul>
-            {%- endif -%}
-          </div>
-          HOMELAYOUTEOF
+          # Custom styles for logo
+          cat > _sass/custom/custom.scss << 'SCSSEOF'
+.site-logo {
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+}
+SCSSEOF
 
       - name: Copy user content
         run: |
@@ -221,15 +166,15 @@ jobs:
           # Create index.md if not exists
           if [ ! -f "index.md" ] && [ ! -f "index.html" ]; then
             if [ -f "README.md" ]; then
-              printf '%s\n' '---' 'layout: home' 'title: Home' '---' '' > index.md
+              printf '%s\n' '---' 'layout: default' 'title: Home' 'nav_order: 1' '---' '' > index.md
               cat README.md >> index.md
             else
               FIRST_DOC=$(find . -maxdepth 1 -name "*.md" ! -name "README.md" -type f | sort | head -1)
               if [ -n "$FIRST_DOC" ]; then
-                printf '%s\n' '---' 'layout: home' 'title: Home' '---' '' > index.md
+                printf '%s\n' '---' 'layout: default' 'title: Home' 'nav_order: 1' '---' '' > index.md
                 cat "$FIRST_DOC" >> index.md
               else
-                printf '%s\n' '---' 'layout: home' 'title: Home' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > index.md
+                printf '%s\n' '---' 'layout: default' 'title: Home' 'nav_order: 1' '---' '' '# Welcome' '' 'Add your markdown files to get started.' > index.md
               fi
             fi
           fi
@@ -238,22 +183,55 @@ jobs:
           if [ -f "index.md" ]; then
             if ! head -1 "index.md" | grep -q "^---"; then
               TMPFILE=$(mktemp)
-              printf '%s\n' '---' 'layout: home' 'title: Home' '---' '' > "$TMPFILE"
+              printf '%s\n' '---' 'layout: default' 'title: Home' 'nav_order: 1' '---' '' > "$TMPFILE"
               cat index.md >> "$TMPFILE"
               mv "$TMPFILE" index.md
             fi
           fi
           
           # Add front matter to markdown files if missing
-          find . -maxdepth 1 -name "*.md" ! -name "index.md" ! -name "README.md" -type f | while read f; do
+          NAV_ORDER=2
+          find . -maxdepth 1 -name "*.md" ! -name "index.md" ! -name "README.md" -type f | sort | while read f; do
             if ! head -1 "$f" | grep -q "^---"; then
               filename=$(basename "$f" .md)
               title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
               TMPFILE=$(mktemp)
-              printf '%s\n' '---' 'layout: page' "title: $title" '---' '' > "$TMPFILE"
+              printf '%s\n' '---' 'layout: default' "title: $title" "nav_order: $NAV_ORDER" '---' '' > "$TMPFILE"
               cat "$f" >> "$TMPFILE"
               mv "$TMPFILE" "$f"
+              NAV_ORDER=$((NAV_ORDER + 1))
             fi
+          done
+          
+          # Process subdirectories as parent pages
+          for dir in */; do
+            case "$dir" in
+              _*|vendor/|node_modules/) ;;
+              *)
+                dirname=$(basename "$dir")
+                dir_title=$(echo "$dirname" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                
+                # Create parent index if not exists
+                if [ ! -f "${dir}index.md" ] && [ ! -f "${dir}README.md" ]; then
+                  printf '%s\n' '---' 'layout: default' "title: $dir_title" 'has_children: true' '---' '' > "${dir}index.md"
+                fi
+                
+                # Add front matter to files in subdirectory
+                find "$dir" -maxdepth 1 -name "*.md" -type f | sort | while read f; do
+                  if ! head -1 "$f" | grep -q "^---"; then
+                    filename=$(basename "$f" .md)
+                    if [ "$filename" = "index" ] || [ "$filename" = "README" ]; then
+                      continue
+                    fi
+                    title=$(echo "$filename" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
+                    TMPFILE=$(mktemp)
+                    printf '%s\n' '---' 'layout: default' "title: $title" "parent: $dir_title" '---' '' > "$TMPFILE"
+                    cat "$f" >> "$TMPFILE"
+                    mv "$TMPFILE" "$f"
+                  fi
+                done
+                ;;
+            esac
           done
 
       - name: Install dependencies and Build
