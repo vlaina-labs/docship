@@ -43,7 +43,7 @@ jobs:
           for f in .docship/.github/workflows/*.yml; do
             name=$(basename "$f" .yml)
             case "$name" in
-              showcase|deploy) ;;
+              showcase|deploy|docsify|docute) ;;  # docsify/docute built in combine stage
               *)
                 if [ "$FIRST" = true ]; then
                   FRAMEWORKS="$FRAMEWORKS\"$name\""
@@ -109,15 +109,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+          cache: 'pip'
 
-      - name: Cache npm
+      - name: Cache dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.npm
-          key: npm-${{ matrix.framework }}-${{ runner.os }}-v2
+          path: |
+            ~/.npm
+            ~/.cache/pip
+          key: deps-${{ matrix.framework }}-${{ runner.os }}-v3
           restore-keys: |
-            npm-${{ matrix.framework }}-${{ runner.os }}-
-            npm-${{ matrix.framework }}-
+            deps-${{ matrix.framework }}-${{ runner.os }}-
+            deps-${{ matrix.framework }}-
 
       - name: Build ${{ matrix.framework }}
         run: |
@@ -133,65 +136,6 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/output
           
           case "$FW" in
-            docsify)
-              cp -r /tmp/build/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ -f "$GITHUB_WORKSPACE/output/index.md" ] && [ ! -f "$GITHUB_WORKSPACE/output/README.md" ] && mv $GITHUB_WORKSPACE/output/index.md $GITHUB_WORKSPACE/output/README.md
-              cat > $GITHUB_WORKSPACE/output/index.html << HTMLEOF
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>${OWNER}/${REPO_NAME}</title>
-            <link rel="icon" href="${AVATAR_URL}">
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-            <style>.app-name-link img{border-radius:50%;width:32px;height:32px;vertical-align:middle;margin-right:10px;}</style>
-          </head>
-          <body>
-            <div id="app"></div>
-            <script>
-              window.\$docsify = {
-                name: '<img src="${AVATAR_URL}">${OWNER}/${REPO_NAME}',
-                repo: '${GITHUB_URL}',
-                subMaxLevel: 3,
-                plugins: [function(hook){hook.afterEach(function(html){return html+'<div style="text-align:center;padding:20px;border-top:1px solid #eee;margin-top:40px;">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/docsifyjs/docsify" target="_blank">Docsify</a></div>';});}]
-              }
-            </script>
-            <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
-          </body>
-          </html>
-          HTMLEOF
-              ;;
-
-            docute)
-              cp -r /tmp/build/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
-              [ -f "$GITHUB_WORKSPACE/output/index.md" ] && [ ! -f "$GITHUB_WORKSPACE/output/README.md" ] && mv $GITHUB_WORKSPACE/output/index.md $GITHUB_WORKSPACE/output/README.md
-              cat > $GITHUB_WORKSPACE/output/index.html << HTMLEOF
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>${OWNER}/${REPO_NAME}</title>
-            <link rel="icon" href="${AVATAR_URL}">
-            <link rel="stylesheet" href="https://unpkg.com/docute@4/dist/docute.css">
-          </head>
-          <body>
-            <div id="docute"></div>
-            <script src="https://unpkg.com/docute@4/dist/docute.js"></script>
-            <script>
-              new Docute({
-                target: '#docute',
-                title: '${OWNER}/${REPO_NAME}',
-                logo: '<span style="display:flex;align-items:center;"><img src="${AVATAR_URL}" style="width:28px;height:28px;border-radius:50%;margin-right:10px;">${OWNER}/${REPO_NAME}</span>',
-                darkThemeToggler: true,
-                nav: [{title:'GitHub',link:'${GITHUB_URL}'}],
-                footer: '<div style="text-align:center;padding:20px;border-top:1px solid #eee;">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/egoist/docute" target="_blank">Docute</a></div>'
-              })
-            </script>
-          </body>
-          </html>
-          HTMLEOF
-              ;;
-
             vitepress)
               cd /tmp/build
               cat > package.json << 'EOF'
@@ -214,7 +158,7 @@ jobs:
             }
           }
           CONFIGEOF
-              npm install && npm run build || true
+              npm install --prefer-offline && npm run build || true
               cp -r docs/.vitepress/dist/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
               [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>VitePress</h1>" > $GITHUB_WORKSPACE/output/index.html
               ;;
@@ -238,7 +182,7 @@ jobs:
             themeConfig: { logo: '${AVATAR_URL}', repo: '${GITHUB_URL}', sidebar: 'auto' }
           }
           CONFIGEOF
-              npm install && npm run build || true
+              npm install --prefer-offline && npm run build || true
               cp -r docs/.vuepress/dist/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
               [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>VuePress</h1>" > $GITHUB_WORKSPACE/output/index.html
               ;;
@@ -327,7 +271,7 @@ jobs:
             }
           });
           CONFIGEOF
-              npm install && npm run build || true
+              npm install --prefer-offline && npm run build || true
               cp -r doc_build/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
               [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>Rspress</h1>" > $GITHUB_WORKSPACE/output/index.html
               ;;
@@ -379,7 +323,7 @@ jobs:
           BOOKEOF
               [ ! -f "SUMMARY.md" ] && { echo "# Summary"; echo ""; echo "* [Home](README.md)"; } > SUMMARY.md
               [ ! -f "README.md" ] && echo "# Welcome" > README.md
-              npm install && npx honkit build || true
+              npm install --prefer-offline && npx honkit build || true
               rm -f _book/gitbook/images/favicon.ico 2>/dev/null || true
               cp -r _book/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
               [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>HonKit</h1>" > $GITHUB_WORKSPACE/output/index.html
@@ -424,7 +368,7 @@ jobs:
             footer: { content: <span>Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/shuding/nextra" target="_blank">Nextra</a></span> }
           }
           CONFIGEOF
-              npm install && npm run build || true
+              npm install --prefer-offline && npm run build || true
               cp -r out/* $GITHUB_WORKSPACE/output/ 2>/dev/null || true
               [ ! -f "$GITHUB_WORKSPACE/output/index.html" ] && echo "<h1>Nextra</h1>" > $GITHUB_WORKSPACE/output/index.html
               ;;
@@ -460,17 +404,78 @@ jobs:
         with:
           path: frameworks
 
-      - name: Create showcase site
+      - name: Build static frameworks and create showcase
         run: |
           REPO_NAME="${{ needs.discover.outputs.repo_name }}"
           OWNER="${{ needs.discover.outputs.owner }}"
           AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
           
           mkdir -p _site
+          
+          # Build docsify (no npm needed)
+          mkdir -p _site/docsify
+          cp -r frameworks/user-content/* _site/docsify/ 2>/dev/null || true
+          [ -f "_site/docsify/index.md" ] && [ ! -f "_site/docsify/README.md" ] && mv _site/docsify/index.md _site/docsify/README.md
+          cat > _site/docsify/index.html << HTMLEOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>${OWNER}/${REPO_NAME}</title>
+            <link rel="icon" href="${AVATAR_URL}">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+            <style>.app-name-link img{border-radius:50%;width:32px;height:32px;vertical-align:middle;margin-right:10px;}</style>
+          </head>
+          <body>
+            <div id="app"></div>
+            <script>
+              window.\$docsify = {
+                name: '<img src="${AVATAR_URL}">${OWNER}/${REPO_NAME}',
+                repo: '${GITHUB_URL}',
+                subMaxLevel: 3,
+                plugins: [function(hook){hook.afterEach(function(html){return html+'<div style="text-align:center;padding:20px;border-top:1px solid #eee;margin-top:40px;">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/docsifyjs/docsify" target="_blank">Docsify</a></div>';});}]
+              }
+            </script>
+            <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
+          </body>
+          </html>
+          HTMLEOF
+          
+          # Build docute (no npm needed)
+          mkdir -p _site/docute
+          cp -r frameworks/user-content/* _site/docute/ 2>/dev/null || true
+          [ -f "_site/docute/index.md" ] && [ ! -f "_site/docute/README.md" ] && mv _site/docute/index.md _site/docute/README.md
+          cat > _site/docute/index.html << HTMLEOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>${OWNER}/${REPO_NAME}</title>
+            <link rel="icon" href="${AVATAR_URL}">
+            <link rel="stylesheet" href="https://unpkg.com/docute@4/dist/docute.css">
+          </head>
+          <body>
+            <div id="docute"></div>
+            <script src="https://unpkg.com/docute@4/dist/docute.js"></script>
+            <script>
+              new Docute({
+                target: '#docute',
+                title: '${OWNER}/${REPO_NAME}',
+                logo: '<span style="display:flex;align-items:center;"><img src="${AVATAR_URL}" style="width:28px;height:28px;border-radius:50%;margin-right:10px;">${OWNER}/${REPO_NAME}</span>',
+                darkThemeToggler: true,
+                nav: [{title:'GitHub',link:'${GITHUB_URL}'}],
+                footer: '<div style="text-align:center;padding:20px;border-top:1px solid #eee;">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/egoist/docute" target="_blank">Docute</a></div>'
+              })
+            </script>
+          </body>
+          </html>
+          HTMLEOF
           
           # Move each framework to its subdirectory
           for dir in frameworks/*/; do
             name=$(basename "$dir")
+            [ "$name" = "user-content" ] && continue
             mkdir -p "_site/$name"
             cp -r "$dir"* "_site/$name/" 2>/dev/null || true
           done
