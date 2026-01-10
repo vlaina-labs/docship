@@ -72,9 +72,11 @@ jobs:
             /tmp/sanitize.sh /tmp/user-content
           fi
           
-          # Debug: show what's in test directory after sanitization
-          echo "=== Content of test-parser-killer.md (lines 215-225) ==="
-          sed -n '215,225p' /tmp/user-content/test/test-parser-killer.md 2>/dev/null || echo "File not found"
+          # Debug: show lines around 272 after sanitization
+          echo "=== Lines 265-280 of test-parser-killer.md after sanitization ==="
+          sed -n '265,280p' /tmp/user-content/test/test-parser-killer.md 2>/dev/null || echo "File not found"
+          echo "=== All lines containing < ==="
+          grep -n "<" /tmp/user-content/test/test-parser-killer.md 2>/dev/null | head -30 || echo "No matches"
 
       - name: Setup VitePress project
         env:
