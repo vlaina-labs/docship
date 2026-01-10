@@ -1,5 +1,28 @@
 # Docship Theme Development Checklist
 
+## ⚠️ Critical Rules
+
+### No Advertisements Policy
+- **NEVER use any theme or plugin that contains ads**
+- Some official themes (e.g., `@vuepress/theme-vue`) contain sponsor/advertisement content - DO NOT USE
+- Always check if theme contains ads, sponsor links, or donation prompts before using
+- When in doubt, use the framework's default theme
+
+**Known themes/plugins with ads (DO NOT USE):**
+| Framework | Theme/Plugin | Issue |
+|-----------|--------------|-------|
+| VuePress | `@vuepress/theme-vue` | Contains sponsor/advertisement content |
+
+**Recommended ad-free alternatives:**
+| Framework | Recommended Theme |
+|-----------|-------------------|
+| VuePress | Default theme (built-in `@vuepress/theme-default`) |
+
+### User Content Respect
+- Never restrict user filenames (e.g., `index.md`, `temp.md` are all valid)
+- User markdown content must never break builds regardless of validity
+- Invalid image paths, links, etc. should be ignored, not cause errors
+
 ## Markdown Compatibility
 
 - [ ] Use `markdown.format: 'md'` instead of MDX to avoid JSX parsing errors (Docusaurus)
@@ -150,6 +173,9 @@ Before releasing a theme, test with:
 | `shallow cloned, latest modified time not presented` | GitHub Actions shallow clone | Warning only, can ignore or use `fetch-depth: 0` |
 | `InvalidTocFile: not a valid TOC File` (DocFX) | Empty or malformed toc.yml | Delete invalid toc.yml from subdirectories |
 | Logo/favicon not showing (DocFX) | External URL in `_appLogoPath`/`_appFaviconPath` | Use custom template JS to inject external URLs |
+| Homepage 404 (VuePress) | Using `index.md` instead of `README.md` | Rename `index.md` to `README.md` |
+| `sidebar: 'auto'` not showing files (VuePress) | VuePress auto only shows headings | Generate sidebar config via Node.js script |
+| Theme has ads/sponsors (VuePress) | Using `@vuepress/theme-vue` | Use default theme (built-in, no ads) |
 
 ## Fumadocs Configuration
 
@@ -184,18 +210,23 @@ Before releasing a theme, test with:
 ## VuePress Configuration
 
 - [ ] VuePress 1.x is Vue 2 based - use `vuepress@^1.9.10`
+- [ ] **⚠️ DO NOT USE `@vuepress/theme-vue`** - it contains sponsor/advertisement content
+- [ ] Use default theme `@vuepress/theme-default` (built-in, no ads)
 - [ ] Content goes in `docs/` directory
 - [ ] Output directory is `docs/.vuepress/dist`
 - [ ] Config file is `docs/.vuepress/config.js`
 - [ ] Use `base: '/${REPO_NAME}/'` for GitHub Pages subdirectory
 - [ ] `themeConfig.logo` supports external URLs directly
-- [ ] `themeConfig.sidebar: 'auto'` only shows current page headings - need manual config for full sidebar
-- [ ] Homepage is `docs/README.md` (not `index.md`)
+- [ ] `themeConfig.sidebar: 'auto'` only shows current page headings - need Node.js script for full sidebar
+- [ ] Homepage is `docs/README.md` (not `index.md`) - must rename `index.md` to `README.md`
 - [ ] Use `themeConfig.repo` for GitHub link in navbar
 - [ ] Custom styles go in `docs/.vuepress/styles/index.styl` (Stylus)
 - [ ] Use `enhanceApp.js` for client-side customizations (e.g., footer injection)
 - [ ] Favicon via `head: [['link', { rel: 'icon', href: 'URL' }]]` - supports external URLs
 - [ ] VuePress uses Vue template syntax - `{{ }}` in markdown will be parsed as Vue expressions
+- [ ] Use `@vuepress/plugin-back-to-top` for back-to-top button (built-in plugin)
+- [ ] VuePress 1.x does NOT have native dark mode toggle - custom implementation is complex
+- [ ] Green scrollbar: apply only to `.sidebar` selector, not whole page
 
 ## DocFX Configuration
 
@@ -203,56 +234,16 @@ Before releasing a theme, test with:
 - [ ] Content goes in `docs/` directory
 - [ ] Output directory is `_site`
 - [ ] Config file is `docfx.json`
-- [ ] Uses `toc.yml` for navigation structure:
-  - Root `toc.yml`: top navbar tabs
-  - `docs/toc.yml`: left sidebar
+- [ ] Uses `toc.yml` for navigation structure (root for navbar, docs/ for sidebar)
 - [ ] `_appLogoPath` and `_appFaviconPath` do NOT support external URLs - need custom template
 - [ ] Use custom template with JavaScript to inject external avatar as logo/favicon
 - [ ] Remove root `toc.yml` to hide navbar tabs (e.g., "Docs" tab) when only one section
 - [ ] Use `redirect_url` frontmatter in `index.md` to redirect homepage to docs
 - [ ] Set `_disableContribution: true` to hide "Edit this page" link
 - [ ] Set `_appFooter` to customize or remove footer
-- [ ] Sidebar toc.yml format: `- name: Title` + `href: file.md` (not `items:` prefix)
-- [ ] Nested items use `items:` array under parent
+- [ ] Sidebar toc.yml format: `- name: Title` + `href: file.md`
 - [ ] Delete invalid `toc.yml` files from user content subdirectories
 - [ ] Exclude framework source folders in backup (fumadocs/, nextra/, docute/, etc.)
-
-### DocFX Custom Template Pattern
-
-For external URLs (logo, favicon, GitHub icon), create custom template:
-```
-templates/custom/public/main.css  - styles
-templates/custom/public/main.js   - JavaScript to inject elements
-```
-
-Add to docfx.json template list:
-```json
-"template": ["default", "modern", "templates/custom"]
-```
-
-JavaScript pattern for external resources:
-```javascript
-export default {
-  start: () => {
-    // Replace favicon
-    const favicon = document.querySelector('link[rel="icon"]');
-    if (favicon) favicon.href = 'EXTERNAL_URL';
-    
-    // Replace logo
-    const logo = document.querySelector('#logo');
-    if (logo) logo.src = 'EXTERNAL_URL';
-    
-    // Add GitHub icon to navbar
-    const navbar = document.querySelector('.navbar-nav .dropdown');
-    if (navbar) {
-      const link = document.createElement('a');
-      link.href = 'GITHUB_URL';
-      link.innerHTML = '<svg>...</svg>';
-      navbar.parentNode.insertBefore(link, navbar);
-    }
-  }
-}
-```
 
 ## Docute Configuration
 
@@ -304,21 +295,14 @@ For all frameworks, implement:
 
 ### Footer Format
 
-All workflows must include a footer with attribution:
-```
-Powered by NekoTick · {Framework}
-```
+All workflows must include a footer with attribution: `Powered by NekoTick · {Framework}`
 
-- NekoTick link: `https://github.com/NekoTick/NekoTick`
-- Framework link: GitHub repository of the framework (not official website)
-- NekoTick comes first (deployment service provider)
-- Framework comes second (underlying tool)
-- Use `·` as separator
-
-Example HTML:
-```html
-<span>Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/{org}/{framework}" target="_blank">Framework</a></span>
-```
+- [ ] NekoTick link: `https://github.com/NekoTick/NekoTick`
+- [ ] Framework link: GitHub repository of the framework (not official website)
+- [ ] NekoTick comes first (deployment service provider)
+- [ ] Framework comes second (underlying tool)
+- [ ] Use `·` as separator
+- [ ] Links should open in new tab (`target="_blank"`)
 
 | Framework | GitHub Link |
 |-----------|-------------|
