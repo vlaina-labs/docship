@@ -154,7 +154,7 @@ jobs:
           for d in $(ls -d _site/*/ 2>/dev/null | sort); do
             [ -d "$d" ] || continue
             fw=$(basename "$d")
-            CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${fw}</h3><a href='${fw}/' target='_blank'>鈫?/a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy'></iframe></div></div>"
+            CARDS="${CARDS}<div class='card'><div class='hdr'><h3>\${fw}</h3><a href='\${fw}/' target='_blank'>Open</a></div><div class='iframe-wrap desktop'><iframe src='\${fw}/' loading='lazy'></iframe></div></div>"
           done
           
           # Create showcase page (HTML only)
@@ -171,8 +171,8 @@ jobs:
           <body>
             <div class="toolbar">
               <span>Preview:</span>
-              <button class="toggle-btn active" data-mode="desktop" onclick="setMode('desktop')">馃枼 Desktop</button>
-              <button class="toggle-btn" data-mode="mobile" onclick="setMode('mobile')">馃摫 Mobile</button>
+              <button class="toggle-btn active" data-mode="desktop" onclick="setMode('desktop')">Desktop</button>
+              <button class="toggle-btn" data-mode="mobile" onclick="setMode('mobile')">Mobile</button>
             </div>
             <div class="grid">CARDS_PLACEHOLDER</div>
             <div class="ft">

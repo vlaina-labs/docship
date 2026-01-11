@@ -1,10 +1,10 @@
 # Docship
 
-只需一行命令就可以构建主流静态网站
+Build and deploy documentation sites to GitHub Pages with a single command.
 
-## 使用方法
+## Usage
 
-放到 `.github/workflows/deploy.yml` 即可：
+Add to `.github/workflows/deploy.yml`:
 
 ```yaml
 name: Deploy
@@ -25,19 +25,19 @@ jobs:
     uses: NekoTick/docship/.github/workflows/docusaurus.yml@main
 ```
 
-## 支持的框架
+## Supported Frameworks
 
-| 框架 | 工作流文件 | 特点 |
-|------|-----------|------|
-| Docsify | `docsify.yml` | 纯前端渲染，无需构建，最轻量 |
-| Docusaurus | `docusaurus.yml` | React 驱动，功能丰富 |
-| VitePress | `vitepress.yml` | Vue 驱动，速度快 |
-| MkDocs Material | `mkdocs-material.yml` | Python 生态，Material 主题 |
-| Starlight | `starlight.yml` | Astro 框架 |
-| Rspress | `rspress.yml` | Rspack 驱动 |
-| Fumadocs | `fumadocs.yml` | Next.js 驱动，现代化 UI |
+| Framework | Workflow File | Features |
+|-----------|---------------|----------|
+| Docsify | `docsify.yml` | Pure frontend rendering, no build required, lightweight |
+| Docusaurus | `docusaurus.yml` | React-powered, feature-rich |
+| VitePress | `vitepress.yml` | Vue-powered, fast |
+| MkDocs Material | `mkdocs-material.yml` | Python ecosystem, Material theme |
+| Starlight | `starlight.yml` | Astro framework |
+| Rspress | `rspress.yml` | Rspack-powered |
+| Fumadocs | `fumadocs.yml` | Next.js-powered, modern UI |
 
-## 示例
+## Examples
 
 ### Fumadocs (Next.js)
 ```yaml

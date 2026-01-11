@@ -254,7 +254,7 @@ jobs:
               `<a href="index.html" class="custom-link">${logoHtml}</a>`);
             
             // Inject footer before closing nav
-            const footerHtml = `<div class="custom-footer">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> 路 <a href="https://github.com/honkit/honkit" target="_blank">HonKit</a></div>`;
+            const footerHtml = `<div class="custom-footer">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/honkit/honkit" target="_blank">HonKit</a></div>`;
             content = content.replace(/<\/nav>\s*<\/div>\s*<div class="book-body">/i, 
               `${footerHtml}</nav></div><div class="book-body">`);
             

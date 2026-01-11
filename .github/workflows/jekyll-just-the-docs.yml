@@ -83,7 +83,7 @@ jobs:
           heading_anchors: true
           back_to_top: true
           back_to_top_text: "Back to top"
-          footer_content: "Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> 路 <a href=\"https://github.com/jekyll/jekyll\" target=\"_blank\">Jekyll</a> 路 <a href=\"https://github.com/just-the-docs/just-the-docs\" target=\"_blank\">Just the Docs</a>"
+          footer_content: "Powered by <a href=\"https://github.com/NekoTick/NekoTick\" target=\"_blank\">NekoTick</a> · <a href=\"https://github.com/jekyll/jekyll\" target=\"_blank\">Jekyll</a> · <a href=\"https://github.com/just-the-docs/just-the-docs\" target=\"_blank\">Just the Docs</a>"
           color_scheme: light
           callouts:
             note:
