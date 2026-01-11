@@ -135,7 +135,11 @@ jobs:
             base: '${BASE_PATH}',
             title: '${OWNER}/${REPO_NAME}',
             icon: '/favicon.png',
-            logo: '/logo.png',
+            logo: {
+              light: '/logo.png',
+              dark: '/logo.png',
+            },
+            logoText: '${OWNER}/${REPO_NAME}',
             markdown: {
               mdxRs: false,
             },

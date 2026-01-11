@@ -158,7 +158,12 @@ jobs:
             border-radius 50%
             width 24px
             height 24px
-            margin-right 8px
+            margin-right 0.5rem
+          
+          .navbar .site-name
+            font-weight 600
+            color #2c3e50
+            position relative
           
           .custom-footer a
             color #3eaf7c

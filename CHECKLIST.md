@@ -353,3 +353,65 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 - [ ] No automatic translation built-in
 - [ ] Options: browser translation, or integrate translation API (costs money)
 - [ ] Structure: `docs/en/`, `docs/zh/` etc. for each language
+
+## Adding New Framework
+
+When adding a new documentation framework to Docship:
+
+### 1. Create Workflow File
+
+- [ ] Create `.github/workflows/{framework}.yml`
+- [ ] Use `on: workflow_call` with `base_path_suffix` and `deploy` inputs
+- [ ] Follow existing workflow structure for consistency
+
+### 2. Add Footer Attribution
+
+Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
+
+- [ ] NekoTick link: `https://github.com/NekoTick/NekoTick`
+- [ ] Framework link: GitHub repository of the framework
+- [ ] Use `·` (middle dot) as separator
+- [ ] Links should open in new tab (`target="_blank"`)
+
+**Footer implementation by framework type:**
+
+| Framework Type | Implementation Method |
+|----------------|----------------------|
+| Docusaurus | `themeConfig.footer.copyright` |
+| VitePress | `themeConfig.footer.message` |
+| Docsify | Plugin with `hook.afterEach` |
+| Docute | `footer` config option |
+| Starlight | Custom Footer.astro component |
+| Rspress | `themeConfig.footer.message` |
+| MkDocs Material | `copyright` in mkdocs.yml |
+| HonKit | JS injection in HTML files |
+| DocFX | `_appFooter` in globalMetadata |
+| Fumadocs | Footer element in app/layout.tsx |
+| Nextra | `footer` prop in Layout component |
+| VuePress | enhanceApp.js DOM injection |
+| Jekyll | `footer_content` in _config.yml |
+
+### 3. Update Showcase
+
+- [ ] Add build job in `showcase.yml` with `name: {framework}`
+- [ ] Add to `needs` array in `combine` job
+- [ ] Add build result env variable (e.g., `BUILD_FRAMEWORK`)
+- [ ] Add to `RESULTS` array in combine step
+- [ ] Add entry in `showcase/frameworks.json` with GitHub link(s)
+
+**frameworks.json format:**
+```json
+{
+  "framework-name": {
+    "links": ["https://github.com/org/repo"]
+  },
+  "framework-with-theme": {
+    "links": ["https://github.com/org/framework", "https://github.com/org/theme"]
+  }
+}
+```
+
+### 4. Update Documentation
+
+- [ ] Add framework to README.md supported frameworks table
+- [ ] Add framework-specific notes to CHECKLIST.md if needed

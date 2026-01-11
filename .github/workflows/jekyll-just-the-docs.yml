@@ -73,6 +73,7 @@ jobs:
           theme: just-the-docs
           favicon_ico: "${AVATAR_URL}"
           logo: "/assets/images/logo.png"
+          site_title: "${OWNER}/${REPO_NAME}"
           aux_links:
             GitHub: "${GITHUB_URL}"
           aux_links_new_tab: true
