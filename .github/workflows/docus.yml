@@ -104,7 +104,7 @@ jobs:
             nitro: {
               prerender: {
                 crawlLinks: true,
-                routes: ['/'],
+                routes: ['/', '/docs', '/docs/index', '/docs/CHECKLIST'],
                 failOnError: false,
               },
             },
@@ -230,7 +230,27 @@ jobs:
         run: npm install
 
       - name: Build Docus site
-        run: npm run generate
+        run: |
+          # Generate routes list from content files
+          ROUTES="['/'"
+          for f in $(find content -name "*.md" -type f); do
+            # Convert content/1.docs/1.index.md to /docs/index
+            route=$(echo "$f" | sed 's|^content/||' | sed 's|\.md$||' | sed 's|/[0-9]*\.|/|g' | sed 's|^[0-9]*\.||')
+            # Handle index files
+            route=$(echo "$route" | sed 's|/index$||')
+            if [ -n "$route" ]; then
+              ROUTES="$ROUTES, '/$route'"
+            fi
+          done
+          ROUTES="$ROUTES]"
+          echo "Routes to prerender: $ROUTES"
+          
+          # Update nuxt.config.ts with dynamic routes
+          sed -i "s|routes: \[.*\]|routes: $ROUTES|" nuxt.config.ts
+          
+          cat nuxt.config.ts
+          
+          npm run generate
 
       - name: Debug output
         run: |
