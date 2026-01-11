@@ -115,45 +115,13 @@ jobs:
           sed -i "s|OWNER_PLACEHOLDER|${OWNER}|g" docs/conf.py
           sed -i "s|GITHUB_URL_PLACEHOLDER|${GITHUB_URL}|g" docs/conf.py
           
-          # Create custom CSS for footer
+          # Create custom CSS
           cat > docs/_static/custom.css << 'CSSEOF'
-          /* Hide default Furo footer content */
-          .bottom-of-page .related-information {
-            display: none;
-          }
-          /* Add our custom footer */
-          .bottom-of-page::before {
-            content: '';
-            display: block;
+          /* Custom styles */
+          .bottom-of-page {
             text-align: center;
-            padding: 1rem 0;
-          }
-          .custom-footer {
-            text-align: center;
-            padding: 1rem 0;
-            font-size: 0.9rem;
-          }
-          .custom-footer a {
-            color: var(--color-brand-primary);
           }
           CSSEOF
-          
-          # Use Sphinx's html_context to inject custom footer via JavaScript
-          cat >> docs/conf.py << 'CONFEOF'
-          
-          # Custom footer
-          templates_path = ['_templates']
-          
-          def setup(app):
-              app.add_js_file(None, body='''
-          document.addEventListener("DOMContentLoaded", function() {
-              var footer = document.querySelector(".bottom-of-page .related-information");
-              if (footer) {
-                  footer.innerHTML = 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/sphinx-doc/sphinx" target="_blank">Sphinx</a> + <a href="https://github.com/pradyunsg/furo" target="_blank">Furo</a>';
-              }
-          });
-          ''')
-          CONFEOF
 
       - name: Copy user content
         run: |
