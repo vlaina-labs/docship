@@ -128,10 +128,10 @@ jobs:
       deploy: false
 
   build-pelican:
-    name: pelican
-    uses: ./.github/workflows/pelican.yml
+    name: sphinx
+    uses: ./.github/workflows/sphinx.yml
     with:
-      base_path_suffix: pelican
+      base_path_suffix: sphinx
       deploy: false
 
   # Combine all build artifacts and create showcase page
@@ -210,7 +210,7 @@ jobs:
           RESULTS[mdbook]="$BUILD_MDBOOK"
           RESULTS[mkdocs-material]="$BUILD_MKDOCS"
           RESULTS[nextra]="$BUILD_NEXTRA"
-          RESULTS[pelican]="$BUILD_PELICAN"
+          RESULTS[sphinx]="$BUILD_PELICAN"
           RESULTS[rspress]="$BUILD_RSPRESS"
           RESULTS[starlight]="$BUILD_STARLIGHT"
           RESULTS[vitepress]="$BUILD_VITEPRESS"

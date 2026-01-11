@@ -1,0 +1,233 @@
+name: Deploy Sphinx to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-sphinx"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-sphinx
+          restore-keys: |
+            ${{ runner.os }}-sphinx
+
+      - name: Install Sphinx and Furo
+        run: pip install sphinx furo myst-parser
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|_build/|node_modules/|__pycache__/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Format markdown content
+        run: |
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh /tmp/user-content
+
+      - name: Setup Sphinx project
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          
+          mkdir -p docs/_static
+          
+          # Download avatar as logo
+          curl -sL "${AVATAR_URL}" -o docs/_static/logo.png || true
+          
+          # Create conf.py
+          cat > docs/conf.py << 'CONFEOF'
+          project = 'PROJECT_PLACEHOLDER'
+          author = 'OWNER_PLACEHOLDER'
+          
+          extensions = ['myst_parser']
+          source_suffix = {'.rst': 'restructuredtext', '.md': 'markdown'}
+          master_doc = 'index'
+          exclude_patterns = ['_build']
+          
+          html_theme = 'furo'
+          html_title = 'PROJECT_PLACEHOLDER'
+          html_logo = '_static/logo.png'
+          html_favicon = '_static/logo.png'
+          
+          html_theme_options = {
+              'sidebar_hide_name': False,
+              'navigation_with_keys': True,
+              'footer_icons': [
+                  {
+                      'name': 'GitHub',
+                      'url': 'GITHUB_URL_PLACEHOLDER',
+                      'html': '<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>',
+                      'class': '',
+                  },
+              ],
+          }
+          
+          html_static_path = ['_static']
+          
+          # Custom CSS for footer
+          html_css_files = ['custom.css']
+          CONFEOF
+          
+          sed -i "s|PROJECT_PLACEHOLDER|${OWNER}/${REPO_NAME}|g" docs/conf.py
+          sed -i "s|OWNER_PLACEHOLDER|${OWNER}|g" docs/conf.py
+          sed -i "s|GITHUB_URL_PLACEHOLDER|${GITHUB_URL}|g" docs/conf.py
+          
+          # Create custom CSS for footer
+          cat > docs/_static/custom.css << 'CSSEOF'
+          .footer-item {
+            font-size: 0.9rem;
+          }
+          footer {
+            text-align: center;
+          }
+          footer::after {
+            content: 'Powered by NekoTick · Sphinx';
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+          }
+          footer a[href*="nekotick"], footer a[href*="sphinx"] {
+            color: var(--color-link);
+          }
+          CSSEOF
+
+      - name: Copy user content
+        run: |
+          # Copy markdown files to docs/
+          for f in /tmp/user-content/*.md; do
+            if [ -f "$f" ]; then
+              cp "$f" docs/
+            fi
+          done
+          
+          # Copy directories
+          for dir in /tmp/user-content/*/; do
+            if [ -d "$dir" ]; then
+              dirname=$(basename "$dir")
+              case "$dirname" in
+                _build|_static|__pycache__) ;;
+                *) cp -r "$dir" "docs/" 2>/dev/null || true ;;
+              esac
+            fi
+          done
+          
+          # Create index.md if not exists
+          if [ ! -f "docs/index.md" ] && [ ! -f "docs/index.rst" ]; then
+            REPO_NAME="${GITHUB_REPOSITORY#*/}"
+            OWNER="${GITHUB_REPOSITORY_OWNER}"
+            cat > docs/index.md << INDEXEOF
+          # Welcome
+          
+          Documentation for ${OWNER}/${REPO_NAME}.
+          
+          ## Contents
+          
+          \`\`\`{toctree}
+          :maxdepth: 2
+          
+          INDEXEOF
+            
+            # Add all markdown files to toctree
+            for f in docs/*.md; do
+              if [ -f "$f" ] && [ "$(basename "$f")" != "index.md" ]; then
+                filename=$(basename "$f" .md)
+                echo "${filename}" >> docs/index.md
+              fi
+            done
+            
+            echo '```' >> docs/index.md
+          fi
+
+      - name: Ensure toctree in index
+        run: |
+          # If index exists but has no toctree, add one
+          if [ -f "docs/index.md" ] && ! grep -q "toctree" docs/index.md; then
+            echo '' >> docs/index.md
+            echo '```{toctree}' >> docs/index.md
+            echo ':maxdepth: 2' >> docs/index.md
+            echo ':hidden:' >> docs/index.md
+            echo '' >> docs/index.md
+            for f in docs/*.md; do
+              if [ -f "$f" ] && [ "$(basename "$f")" != "index.md" ]; then
+                filename=$(basename "$f" .md)
+                echo "${filename}" >> docs/index.md
+              fi
+            done
+            echo '```' >> docs/index.md
+          fi
+
+      - name: Build Sphinx site
+        run: sphinx-build -b html docs docs/_build/html
+
+      - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/html
+
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-sphinx
+          path: docs/_build/html/
+          retention-days: 1
+
+  deploy:
+    if: ${{ inputs.deploy != false }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

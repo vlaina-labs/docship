@@ -293,21 +293,22 @@ Before releasing a theme, test with:
 - [ ] Markdown files need frontmatter with `layout` to use templates
 - [ ] No built-in theme - requires custom CSS/layout
 
-## Pelican Configuration
+## Sphinx Configuration
 
-- [ ] Pelican is a Python-based static site generator
-- [ ] Install via `pip install pelican markdown`
-- [ ] Config file is `pelicanconf.py` (Python)
-- [ ] Default content directory is `content/`
-- [ ] Default output directory is `output/`
-- [ ] Use `PAGE_PATHS` for documentation pages (vs `ARTICLE_PATHS` for blog posts)
-- [ ] Markdown files need metadata header: `Title:`, `Slug:`, etc.
-- [ ] Use `Save_as: index.html` in metadata to create homepage
-- [ ] Custom themes go in `theme/` directory with `templates/` and `static/`
-- [ ] Templates use Jinja2 syntax
-- [ ] Use `SITEURL` for base path configuration
-- [ ] Set `RELATIVE_URLS = False` for production
-- [ ] License is AGPLv3 (not MIT/Apache)
+- [ ] Sphinx is a Python-based documentation generator
+- [ ] Install via `pip install sphinx furo myst-parser`
+- [ ] Config file is `conf.py` (Python)
+- [ ] Default source directory is `docs/` or project root
+- [ ] Default output directory is `_build/html/`
+- [ ] Use `myst-parser` extension to support Markdown (default is reStructuredText)
+- [ ] Furo is a modern, clean theme (BSD license)
+- [ ] Use `toctree` directive to define navigation structure
+- [ ] `html_theme = 'furo'` to use Furo theme
+- [ ] `html_logo` and `html_favicon` for branding
+- [ ] `html_theme_options` for theme customization
+- [ ] Custom CSS goes in `_static/` directory
+- [ ] Build with `sphinx-build -b html docs docs/_build/html`
+- [ ] License is BSD (Sphinx) + MIT (Furo) - very permissive
 
 ## General Lessons Learned
 
@@ -372,7 +373,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | VuePress | `https://github.com/vuejs/vuepress` |
 | mdBook | `https://github.com/rust-lang/mdBook` |
 | Eleventy | `https://github.com/11ty/eleventy` |
-| Pelican | `https://github.com/getpelican/pelican` |
+| Sphinx | `https://github.com/sphinx-doc/sphinx` |
 
 ### Logo Implementation Patterns
 
@@ -447,7 +448,7 @@ Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
 | VuePress | enhanceApp.js DOM injection |
 | mdBook | Custom theme/index.hbs or theme/head.hbs |
 | Eleventy | Custom layout template with footer |
-| Pelican | Custom theme template footer |
+| Sphinx | Custom CSS in _static/custom.css |
 | Jekyll | `footer_content` in _config.yml |
 
 ### 3. Update Showcase
