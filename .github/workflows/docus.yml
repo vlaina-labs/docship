@@ -140,26 +140,29 @@ jobs:
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           
+          # Create docs directory for all documentation content
+          mkdir -p "content/1.docs"
+          
           NAV_ORDER=1
           
-          # Copy and process markdown files directly to content root
+          # Copy and process markdown files into docs directory
           for f in /tmp/user-content/*.md; do
             if [ -f "$f" ]; then
               basename_noext=$(basename "$f" .md)
               
               # Determine target filename with order prefix
               if [ "$basename_noext" = "index" ]; then
-                target="content/index.md"
+                target="content/1.docs/1.index.md"
               else
                 NAV_ORDER=$((NAV_ORDER + 1))
-                target="content/${NAV_ORDER}.${basename_noext}.md"
+                target="content/1.docs/${NAV_ORDER}.${basename_noext}.md"
               fi
               
               # Add frontmatter if not present
               if ! head -1 "$f" | grep -q "^---"; then
                 title=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
                 if [ "$basename_noext" = "index" ]; then
-                  title="Home"
+                  title="Introduction"
                 fi
                 printf '%s\n' '---' "title: ${title}" '---' '' > "$target"
                 cat "$f" >> "$target"
@@ -177,18 +180,18 @@ jobs:
               case "$dirname" in
                 node_modules|.output|.nuxt|content|public|app) ;;
                 *)
-                  mkdir -p "content/${DIR_ORDER}.${dirname}"
+                  mkdir -p "content/1.docs/${DIR_ORDER}.${dirname}"
                   
                   # Create navigation.yml for the directory
                   title=$(echo "$dirname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
-                  printf '%s\n' "title: ${title}" > "content/${DIR_ORDER}.${dirname}/.navigation.yml"
+                  printf '%s\n' "title: ${title}" > "content/1.docs/${DIR_ORDER}.${dirname}/.navigation.yml"
                   
                   # Copy and process markdown files in directory
                   SUB_ORDER=1
                   for f in "$dir"*.md; do
                     if [ -f "$f" ]; then
                       basename_noext=$(basename "$f" .md)
-                      target="content/${DIR_ORDER}.${dirname}/${SUB_ORDER}.${basename_noext}.md"
+                      target="content/1.docs/${DIR_ORDER}.${dirname}/${SUB_ORDER}.${basename_noext}.md"
                       SUB_ORDER=$((SUB_ORDER + 1))
                       
                       # Add frontmatter if not present
@@ -208,9 +211,9 @@ jobs:
             fi
           done
           
-          # Create default index.md if none exists
-          if [ ! -f "content/index.md" ]; then
-            printf '%s\n' '---' 'title: Home' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > "content/index.md"
+          # Create default docs index if none exists
+          if [ ! -f "content/1.docs/1.index.md" ]; then
+            printf '%s\n' '---' 'title: Introduction' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > "content/1.docs/1.index.md"
           fi
 
       - name: Install dependencies
@@ -218,6 +221,29 @@ jobs:
 
       - name: Build Docus site
         run: npm run generate
+
+      - name: Create index redirect
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
+          
+          # Create HTML redirect for root index
+          cat > .output/public/index.html << REDIRECTEOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0; url=${BASE_PATH}/docs">
+            <link rel="canonical" href="${BASE_PATH}/docs">
+            <script>window.location.href = "${BASE_PATH}/docs";</script>
+          </head>
+          <body>
+            <p>Redirecting to <a href="${BASE_PATH}/docs">documentation</a>...</p>
+          </body>
+          </html>
+          REDIRECTEOF
 
       - name: Setup Pages
         if: ${{ inputs.deploy != false }}
