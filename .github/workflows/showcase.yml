@@ -102,6 +102,7 @@ jobs:
 
   # Combine all build artifacts and create showcase page
   combine:
+    if: always()
     needs:
       - build-docsify
       - build-docute
@@ -122,6 +123,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+        continue-on-error: true
 
       - name: Checkout showcase assets
         uses: actions/checkout@v4
@@ -131,6 +133,20 @@ jobs:
           path: docship-repo
 
       - name: Create showcase site
+        env:
+          BUILD_DOCSIFY: ${{ needs.build-docsify.result }}
+          BUILD_DOCUTE: ${{ needs.build-docute.result }}
+          BUILD_VITEPRESS: ${{ needs.build-vitepress.result }}
+          BUILD_VUEPRESS: ${{ needs.build-vuepress.result }}
+          BUILD_DOCUSAURUS: ${{ needs.build-docusaurus.result }}
+          BUILD_STARLIGHT: ${{ needs.build-starlight.result }}
+          BUILD_RSPRESS: ${{ needs.build-rspress.result }}
+          BUILD_MKDOCS: ${{ needs.build-mkdocs-material.result }}
+          BUILD_HONKIT: ${{ needs.build-honkit.result }}
+          BUILD_DOCFX: ${{ needs.build-docfx.result }}
+          BUILD_FUMADOCS: ${{ needs.build-fumadocs.result }}
+          BUILD_NEXTRA: ${{ needs.build-nextra.result }}
+          BUILD_JEKYLL: ${{ needs.build-jekyll.result }}
         run: |
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
@@ -141,7 +157,23 @@ jobs:
           cp docship-repo/showcase/style.css _site/
           cp docship-repo/showcase/script.js _site/
           
-          # Collect all build-* artifacts
+          # Define all frameworks and their build results
+          declare -A RESULTS
+          RESULTS[docsify]="$BUILD_DOCSIFY"
+          RESULTS[docute]="$BUILD_DOCUTE"
+          RESULTS[vitepress]="$BUILD_VITEPRESS"
+          RESULTS[vuepress]="$BUILD_VUEPRESS"
+          RESULTS[docusaurus]="$BUILD_DOCUSAURUS"
+          RESULTS[starlight]="$BUILD_STARLIGHT"
+          RESULTS[rspress]="$BUILD_RSPRESS"
+          RESULTS[mkdocs-material]="$BUILD_MKDOCS"
+          RESULTS[honkit]="$BUILD_HONKIT"
+          RESULTS[docfx]="$BUILD_DOCFX"
+          RESULTS[fumadocs]="$BUILD_FUMADOCS"
+          RESULTS[nextra]="$BUILD_NEXTRA"
+          RESULTS[jekyll]="$BUILD_JEKYLL"
+          
+          # Collect successful build artifacts
           for d in artifacts/build-*/; do
             [ -d "$d" ] || continue
             fw=$(basename "$d" | sed 's/^build-//')
@@ -150,14 +182,20 @@ jobs:
           done
           
           # Generate iframe cards (sorted alphabetically)
+          # Show successful builds as normal cards, failed builds as error cards
           CARDS=""
-          for d in $(ls -d _site/*/ 2>/dev/null | sort); do
-            [ -d "$d" ] || continue
-            fw=$(basename "$d")
-            CARDS="${CARDS}<div class='card'><div class='hdr'><h3>\${fw}</h3><a href='\${fw}/' target='_blank'>Open</a></div><div class='iframe-wrap desktop'><iframe src='\${fw}/' loading='lazy'></iframe></div></div>"
+          for fw in $(echo "${!RESULTS[@]}" | tr ' ' '\n' | sort); do
+            result="${RESULTS[$fw]}"
+            if [ -d "_site/$fw" ] && [ "$(ls -A _site/$fw 2>/dev/null)" ]; then
+              # Success - show iframe
+              CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${fw}</h3><a href='${fw}/' target='_blank'>Open</a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy'></iframe></div></div>"
+            else
+              # Failed - show error message
+              CARDS="${CARDS}<div class='card card-error'><div class='hdr'><h3>${fw}</h3><span class='status'>Build Failed</span></div><div class='iframe-wrap desktop'><div class='error-msg'>Build failed. Check workflow logs for details.</div></div></div>"
+            fi
           done
           
-          # Create showcase page (HTML only)
+          # Create showcase page
           cat > _site/index.html << 'HTMLEOF'
           <!DOCTYPE html>
           <html>
@@ -196,6 +234,7 @@ jobs:
           path: _site
 
   deploy:
+    if: always()
     needs: combine
     runs-on: ubuntu-latest
     environment:

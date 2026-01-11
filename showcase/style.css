@@ -77,6 +77,20 @@ body {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
+.card-error {
+  border: 2px solid #e74c3c;
+}
+
+.card-error .hdr {
+  background: #fdf2f2;
+}
+
+.card-error .status {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 .hdr {
   display: flex;
   align-items: center;
@@ -94,12 +108,13 @@ body {
 .hdr a {
   color: #667eea;
   text-decoration: none;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
 }
 
 .iframe-wrap {
   display: flex;
   justify-content: center;
+  align-items: center;
   background: #e8e8e8;
   padding: 10px;
   min-height: 470px;
@@ -120,6 +135,13 @@ body {
   width: 375px;
   height: 667px;
   border-radius: 20px;
+}
+
+.error-msg {
+  color: #666;
+  text-align: center;
+  padding: 40px;
+  font-size: 0.95rem;
 }
 
 .ft {

@@ -1,34 +1,24 @@
 > ⚠️ **This is a test file for DocShip development. The content below is sample documentation.**
 
-# Code Block Edge Cases
+# Code Block Test
 
-## Unknown Languages
+## Basic Code Blocks
 
-These code blocks use languages that may not be recognized:
-
-```invalidlanguage
-This language doesn't exist
+```javascript
+// JavaScript code
+const greeting = "Hello, World!";
+console.log(greeting);
 ```
 
-```nonexistent
-Some code here
+```python
+# Python code
+def hello():
+    print("Hello")
 ```
 
-```fake-lang-123
-More fake code
-```
-
-## Diagram Languages
-
-These are common diagram languages that may not be supported:
-
-```mermaid
-graph TD
-    A[Start] --> B[End]
-```
-
-```plantuml
-Alice -> Bob: Hello
+```bash
+# Shell script
+echo "Hello World"
 ```
 
 ## Empty Code Blocks
@@ -45,24 +35,10 @@ Normal inline code: `const x = 1`
 
 Double backticks: ``code with `backtick` inside``
 
-## Very Long Line
+## Long Line
 
 ```text
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-```
-
-## Normal Code
-
-```javascript
-// This should work fine
-const greeting = "Hello, World!";
-console.log(greeting);
-```
-
-```python
-# Python code
-def hello():
-    print("Hello")
 ```
 
 ## Normal Content

@@ -28,7 +28,7 @@
 - [ ] Use `markdown.format: 'md'` instead of MDX to avoid JSX parsing errors (Docusaurus)
   - Users may have `${}`, `<>`, `{}` in their markdown content
   - MDX will treat these as JSX expressions and fail
-- [ ] VitePress is more lenient with `${}` but `{{ }}` will be treated as Vue template
+- [ ] VitePress is more lenient with `${}` but double curly braces will be treated as Vue template
 - [ ] Don't restrict filenames - users can use any name like `temp.md`
 - [ ] Handle files with special characters in content gracefully
 
@@ -119,7 +119,7 @@ Before releasing a theme, test with:
 - [ ] Files with `${}` syntax in content
 - [ ] Files with JSX-like syntax `<Component />`
 - [ ] Files with curly braces `{}`
-- [ ] Files with `{{ }}` Vue template syntax (VitePress specific)
+- [ ] Files with Vue template syntax (VitePress specific)
 - [ ] Unicode/special characters in filenames
 - [ ] Very long filenames
 - [ ] Files starting with `_` (usually ignored by default)
@@ -223,7 +223,7 @@ Before releasing a theme, test with:
 - [ ] Custom styles go in `docs/.vuepress/styles/index.styl` (Stylus)
 - [ ] Use `enhanceApp.js` for client-side customizations (e.g., footer injection)
 - [ ] Favicon via `head: [['link', { rel: 'icon', href: 'URL' }]]` - supports external URLs
-- [ ] VuePress uses Vue template syntax - `{{ }}` in markdown will be parsed as Vue expressions
+- [ ] VuePress uses Vue template syntax - double curly braces in markdown will be parsed as Vue expressions
 - [ ] Use `@vuepress/plugin-back-to-top` for back-to-top button (built-in plugin)
 - [ ] VuePress 1.x does NOT have native dark mode toggle - custom implementation is complex
 - [ ] Green scrollbar: apply only to `.sidebar` selector, not whole page
@@ -342,7 +342,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 ### Testing Checklist (Updated)
 
 - [ ] Files with invalid image paths (should not break build)
-- [ ] Files with special markdown syntax (`${}`, `<>`, `{}`, `{{ }}`)
+- [ ] Files with special markdown syntax (`${}`, `<>`, `{}`)
 - [ ] Empty repository (should show welcome page)
 - [ ] Nested folder structure (should generate proper sidebar)
 - [ ] Repository without index.md (should use first doc as homepage)
