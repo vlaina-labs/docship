@@ -223,24 +223,40 @@ jobs:
         run: npm run generate
 
       - name: Create index redirect
-        env:
-          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
         run: |
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
+          # Find the first doc page and redirect to it
+          FIRST_DOC=$(find .output/public/docs -name "*.html" 2>/dev/null | head -1 || echo "")
           
-          # Create HTML redirect for root index
+          if [ -n "$FIRST_DOC" ]; then
+            # docs directory exists
+            REDIRECT_PATH="docs"
+          else
+            # Try to find any html file
+            FIRST_DOC=$(find .output/public -maxdepth 2 -name "*.html" ! -name "index.html" 2>/dev/null | head -1 || echo "")
+            if [ -n "$FIRST_DOC" ]; then
+              REDIRECT_PATH=$(dirname "$FIRST_DOC" | sed 's|.output/public/||')
+            else
+              REDIRECT_PATH=""
+            fi
+          fi
+          
+          echo "Redirect path: $REDIRECT_PATH"
+          ls -la .output/public/ || true
+          ls -la .output/public/docs/ 2>/dev/null || true
+          
+          # Create HTML redirect for root index using relative path
           cat > .output/public/index.html << REDIRECTEOF
           <!DOCTYPE html>
           <html>
           <head>
             <meta charset="utf-8">
-            <meta http-equiv="refresh" content="0; url=${BASE_PATH}/docs">
-            <link rel="canonical" href="${BASE_PATH}/docs">
-            <script>window.location.href = "${BASE_PATH}/docs";</script>
+            <script>
+              var path = window.location.pathname.replace(/\/$/, '');
+              window.location.href = path + '/${REDIRECT_PATH}';
+            </script>
           </head>
           <body>
-            <p>Redirecting to <a href="${BASE_PATH}/docs">documentation</a>...</p>
+            <p>Redirecting to documentation...</p>
           </body>
           </html>
           REDIRECTEOF
