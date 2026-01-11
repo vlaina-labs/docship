@@ -374,6 +374,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | mdBook | `https://github.com/rust-lang/mdBook` |
 | Eleventy | `https://github.com/11ty/eleventy` |
 | Sphinx | `https://github.com/sphinx-doc/sphinx` |
+| Docus | `https://github.com/nuxt-content/docus` |
 
 ### Logo Implementation Patterns
 
@@ -449,6 +450,7 @@ Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
 | mdBook | Custom theme/index.hbs or theme/head.hbs |
 | Eleventy | Custom layout template with footer |
 | Sphinx | Custom CSS in _static/custom.css |
+| Docus | `footer.credits` in app.config.ts |
 | Jekyll | `footer_content` in _config.yml |
 
 ### 3. Update Showcase

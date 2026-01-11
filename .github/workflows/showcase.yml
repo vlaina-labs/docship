@@ -134,6 +134,13 @@ jobs:
       base_path_suffix: sphinx
       deploy: false
 
+  build-docus:
+    name: docus
+    uses: ./.github/workflows/docus.yml
+    with:
+      base_path_suffix: docus
+      deploy: false
+
   # Combine all build artifacts and create showcase page
   combine:
     if: always()
@@ -154,6 +161,7 @@ jobs:
       - build-mdbook
       - build-eleventy
       - build-sphinx
+      - build-docus
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -187,6 +195,7 @@ jobs:
           BUILD_MDBOOK: ${{ needs.build-mdbook.result }}
           BUILD_ELEVENTY: ${{ needs.build-eleventy.result }}
           BUILD_SPHINX: ${{ needs.build-sphinx.result }}
+          BUILD_DOCUS: ${{ needs.build-docus.result }}
         run: |
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
@@ -203,6 +212,7 @@ jobs:
           RESULTS[docusaurus]="$BUILD_DOCUSAURUS"
           RESULTS[docute]="$BUILD_DOCUTE"
           RESULTS[docfx]="$BUILD_DOCFX"
+          RESULTS[docus]="$BUILD_DOCUS"
           RESULTS[eleventy]="$BUILD_ELEVENTY"
           RESULTS[fumadocs]="$BUILD_FUMADOCS"
           RESULTS[honkit]="$BUILD_HONKIT"

@@ -11,6 +11,9 @@
   "docfx": {
     "links": ["https://github.com/dotnet/docfx"]
   },
+  "docus": {
+    "links": ["https://github.com/nuxt-content/docus"]
+  },
   "eleventy": {
     "links": ["https://github.com/11ty/eleventy"]
   },

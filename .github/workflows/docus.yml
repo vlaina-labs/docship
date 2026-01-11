@@ -1,0 +1,237 @@
+name: Deploy Docus to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-docus"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-docus
+          restore-keys: |
+            ${{ runner.os }}-docus
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|node_modules/|.output/|.nuxt/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Format markdown content
+        run: |
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh /tmp/user-content
+
+      - name: Setup Docus project
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
+          
+          # Create package.json
+          cat > package.json << 'EOF'
+          {
+            "name": "docs",
+            "scripts": {
+              "dev": "nuxt dev --extends docus",
+              "build": "nuxt build --extends docus",
+              "generate": "nuxt generate --extends docus"
+            },
+            "dependencies": {
+              "docus": "latest",
+              "better-sqlite3": "^12.5.0",
+              "nuxt": "^4.2.2"
+            }
+          }
+          EOF
+          
+          # Create nuxt.config.ts with base path
+          printf "export default defineNuxtConfig({\n" > nuxt.config.ts
+          printf "  app: {\n" >> nuxt.config.ts
+          printf "    baseURL: '%s',\n" "${BASE_PATH}" >> nuxt.config.ts
+          printf "  },\n" >> nuxt.config.ts
+          printf "  nitro: {\n" >> nuxt.config.ts
+          printf "    preset: 'static',\n" >> nuxt.config.ts
+          printf "  },\n" >> nuxt.config.ts
+          printf "})\n" >> nuxt.config.ts
+          
+          # Create app.config.ts
+          printf "export default defineAppConfig({\n" > app.config.ts
+          printf "  docus: {\n" >> app.config.ts
+          printf "    title: '%s/%s',\n" "${OWNER}" "${REPO_NAME}" >> app.config.ts
+          printf "    description: 'Documentation for %s/%s',\n" "${OWNER}" "${REPO_NAME}" >> app.config.ts
+          printf "    image: '%s',\n" "${AVATAR_URL}" >> app.config.ts
+          printf "    socials: {\n" >> app.config.ts
+          printf "      github: '%s',\n" "${GITHUB_URL}" >> app.config.ts
+          printf "    },\n" >> app.config.ts
+          printf "    header: {\n" >> app.config.ts
+          printf "      logo: true,\n" >> app.config.ts
+          printf "    },\n" >> app.config.ts
+          printf "    footer: {\n" >> app.config.ts
+          printf "      credits: {\n" >> app.config.ts
+          printf "        text: 'Powered by NekoTick · Docus',\n" >> app.config.ts
+          printf "        href: 'https://github.com/NekoTick/NekoTick',\n" >> app.config.ts
+          printf "      },\n" >> app.config.ts
+          printf "    },\n" >> app.config.ts
+          printf "  },\n" >> app.config.ts
+          printf "})\n" >> app.config.ts
+          
+          # Create content directory
+          mkdir -p content
+          
+          # Download avatar as favicon
+          mkdir -p public
+          curl -sL "${AVATAR_URL}" -o public/favicon.ico || true
+
+      - name: Copy user content
+        run: |
+          NAV_ORDER=1
+          
+          # Copy and process markdown files
+          for f in /tmp/user-content/*.md; do
+            if [ -f "$f" ]; then
+              filename=$(basename "$f")
+              basename_noext=$(basename "$f" .md)
+              
+              # Determine target filename with order prefix
+              if [ "$basename_noext" = "index" ]; then
+                target="content/index.md"
+              else
+                target="content/${NAV_ORDER}.${basename_noext}.md"
+                NAV_ORDER=$((NAV_ORDER + 1))
+              fi
+              
+              # Add frontmatter if not present
+              if ! head -1 "$f" | grep -q "^---"; then
+                title=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                printf '%s\n' '---' "title: ${title}" '---' '' > "$target"
+                cat "$f" >> "$target"
+              else
+                cp "$f" "$target"
+              fi
+            fi
+          done
+          
+          # Copy directories
+          for dir in /tmp/user-content/*/; do
+            if [ -d "$dir" ]; then
+              dirname=$(basename "$dir")
+              case "$dirname" in
+                node_modules|.output|.nuxt|content|public) ;;
+                *)
+                  mkdir -p "content/${NAV_ORDER}.${dirname}"
+                  
+                  # Copy and process markdown files in directory
+                  SUB_ORDER=1
+                  for f in "$dir"*.md; do
+                    if [ -f "$f" ]; then
+                      basename_noext=$(basename "$f" .md)
+                      
+                      if [ "$basename_noext" = "index" ]; then
+                        target="content/${NAV_ORDER}.${dirname}/index.md"
+                      else
+                        target="content/${NAV_ORDER}.${dirname}/${SUB_ORDER}.${basename_noext}.md"
+                        SUB_ORDER=$((SUB_ORDER + 1))
+                      fi
+                      
+                      # Add frontmatter if not present
+                      if ! head -1 "$f" | grep -q "^---"; then
+                        title=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                        printf '%s\n' '---' "title: ${title}" '---' '' > "$target"
+                        cat "$f" >> "$target"
+                      else
+                        cp "$f" "$target"
+                      fi
+                    fi
+                  done
+                  
+                  NAV_ORDER=$((NAV_ORDER + 1))
+                  ;;
+              esac
+            fi
+          done
+          
+          # Create index.md if not exists
+          if [ ! -f "content/index.md" ]; then
+            REPO_NAME="${GITHUB_REPOSITORY#*/}"
+            OWNER="${GITHUB_REPOSITORY_OWNER}"
+            printf '%s\n' '---' 'title: Home' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > content/index.md
+          fi
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Docus site
+        run: npm run generate
+
+      - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .output/public
+
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-docus
+          path: .output/public/
+          retention-days: 1
+
+  deploy:
+    if: ${{ inputs.deploy != false }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

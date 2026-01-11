@@ -31,6 +31,7 @@ jobs:
 |-----------|---------------|----------|
 | Docsify | `docsify.yml` | Pure frontend, no build required |
 | Docusaurus | `docusaurus.yml` | React-powered, feature-rich |
+| Docus | `docus.yml` | Nuxt 4-powered, modern design |
 | Docute | `docute.yml` | Pure frontend, Vue-based |
 | DocFX | `docfx.yml` | .NET ecosystem |
 | Eleventy | `eleventy.yml` | JavaScript, flexible templating |
