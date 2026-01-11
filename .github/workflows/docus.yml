@@ -129,7 +129,7 @@ jobs:
           })
           APPEOF
           
-          # Create custom footer component
+          # Create custom footer component (left side)
           cat > app/components/app/AppFooterLeft.vue << 'FOOTEREOF'
           <template>
             <div class="text-sm text-muted">
@@ -137,6 +137,13 @@ jobs:
             </div>
           </template>
           FOOTEREOF
+          
+          # Create custom footer component (right side) - empty to remove icons
+          cat > app/components/app/AppFooterRight.vue << 'FOOTERREOF'
+          <template>
+            <div></div>
+          </template>
+          FOOTERREOF
           
           # Create content directory
           mkdir -p content
