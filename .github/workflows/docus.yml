@@ -102,7 +102,7 @@ jobs:
           NUXTEOF
           
           # Create app directory and app.config.ts
-          mkdir -p app
+          mkdir -p app/components/app
           cat > app/app.config.ts << APPEOF
           export default defineAppConfig({
             header: {
@@ -118,6 +118,15 @@ jobs:
             },
           })
           APPEOF
+          
+          # Create custom footer component
+          cat > app/components/app/AppFooterLeft.vue << 'FOOTEREOF'
+          <template>
+            <div class="text-sm text-muted">
+              Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank" class="text-primary hover:underline">NekoTick</a> · <a href="https://github.com/nuxt-content/docus" target="_blank" class="text-primary hover:underline">Docus</a>
+            </div>
+          </template>
+          FOOTEREOF
           
           # Create content directory
           mkdir -p content
@@ -205,28 +214,13 @@ jobs:
             fi
           done
           
-          # Create a simple index.md that redirects to docs
+          # Create index.md that redirects to docs
           cat > content/index.md << 'INDEXEOF'
           ---
           title: Home
           navigation: false
+          redirect: /docs
           ---
-          
-          ::u-page-hero
-          #title
-          Welcome to the Documentation
-          
-          #links
-            :::u-button
-            ---
-            color: neutral
-            size: xl
-            to: /docs
-            trailing-icon: i-lucide-arrow-right
-            ---
-            Get Started
-            :::
-          ::
           INDEXEOF
           
           # Create default docs index if none exists
