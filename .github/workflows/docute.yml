@@ -127,6 +127,10 @@ jobs:
               <title>${OWNER}/${REPO_NAME}</title>
               <link rel="icon" href="${AVATAR_URL}">
               <link rel="stylesheet" href="https://unpkg.com/docute@4/dist/docute.css">
+              <style>
+                .custom-footer { text-align: center; padding: 20px; font-size: 14px; color: #7e888b; border-top: 1px solid #eee; margin-top: 40px; }
+                .custom-footer a { color: #42b983; text-decoration: none; }
+              </style>
             </head>
             <body>
               <div id="docute"></div>
@@ -137,6 +141,7 @@ jobs:
                   title: '${OWNER}/${REPO_NAME}',
                   logo: '<span style="display:flex;align-items:center;gap:8px;"><img src="${AVATAR_URL}" alt="Logo" style="width:24px;height:24px;border-radius:50%;">${OWNER}/${REPO_NAME}</span>',
                   darkThemeToggler: true,
+                  footer: '<div class="custom-footer">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/egoist/docute" target="_blank">Docute</a></div>',
                   nav: [
                     {
                       title: 'Home',

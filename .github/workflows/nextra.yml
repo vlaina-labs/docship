@@ -157,6 +157,7 @@ jobs:
                     navbar={navbar}
                     docsRepositoryBase="https://github.com/${OWNER}/${REPO_NAME}"
                     pageMap={pageMap}
+                    footer={<div style={{ textAlign: 'center', padding: '20px', fontSize: '14px', color: '#666', borderTop: '1px solid #eee' }}>Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank" style={{ color: '#0070f3' }}>NekoTick</a> · <a href="https://github.com/shuding/nextra" target="_blank" style={{ color: '#0070f3' }}>Nextra</a></div>}
                   >
                     {children}
                   </Layout>

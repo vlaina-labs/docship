@@ -1,0 +1,41 @@
+{
+  "docsify": {
+    "links": ["https://github.com/docsifyjs/docsify"]
+  },
+  "docusaurus": {
+    "links": ["https://github.com/facebook/docusaurus"]
+  },
+  "docute": {
+    "links": ["https://github.com/egoist/docute"]
+  },
+  "docfx": {
+    "links": ["https://github.com/dotnet/docfx"]
+  },
+  "fumadocs": {
+    "links": ["https://github.com/fuma-nama/fumadocs"]
+  },
+  "honkit": {
+    "links": ["https://github.com/honkit/honkit"]
+  },
+  "jekyll": {
+    "links": ["https://github.com/jekyll/jekyll", "https://github.com/just-the-docs/just-the-docs"]
+  },
+  "mkdocs-material": {
+    "links": ["https://github.com/squidfunk/mkdocs-material"]
+  },
+  "nextra": {
+    "links": ["https://github.com/shuding/nextra"]
+  },
+  "rspress": {
+    "links": ["https://github.com/web-infra-dev/rspress"]
+  },
+  "starlight": {
+    "links": ["https://github.com/withastro/starlight"]
+  },
+  "vitepress": {
+    "links": ["https://github.com/vuejs/vitepress"]
+  },
+  "vuepress": {
+    "links": ["https://github.com/vuejs/vuepress"]
+  }
+}

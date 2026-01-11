@@ -148,6 +148,9 @@ jobs:
                   ${SIDEBAR_ITEMS}
                 ],
               },
+              footer: {
+                message: 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/web-infra-dev/rspress" target="_blank">Rspress</a>',
+              },
             },
           });
           CONFIGEOF

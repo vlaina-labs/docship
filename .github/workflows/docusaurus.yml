@@ -147,6 +147,10 @@ jobs:
                     },
                   ],
                 },
+                footer: {
+                  style: 'light',
+                  copyright: 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/facebook/docusaurus" target="_blank">Docusaurus</a>',
+                },
                 prism: {
                   theme: prismThemes.github,
                   darkTheme: prismThemes.dracula,

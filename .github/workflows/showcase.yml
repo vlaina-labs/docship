@@ -173,18 +173,18 @@ jobs:
           # Define all frameworks and their build results
           declare -A RESULTS
           RESULTS[docsify]="$BUILD_DOCSIFY"
-          RESULTS[docute]="$BUILD_DOCUTE"
-          RESULTS[vitepress]="$BUILD_VITEPRESS"
-          RESULTS[vuepress]="$BUILD_VUEPRESS"
           RESULTS[docusaurus]="$BUILD_DOCUSAURUS"
-          RESULTS[starlight]="$BUILD_STARLIGHT"
-          RESULTS[rspress]="$BUILD_RSPRESS"
-          RESULTS[mkdocs-material]="$BUILD_MKDOCS"
-          RESULTS[honkit]="$BUILD_HONKIT"
+          RESULTS[docute]="$BUILD_DOCUTE"
           RESULTS[docfx]="$BUILD_DOCFX"
           RESULTS[fumadocs]="$BUILD_FUMADOCS"
-          RESULTS[nextra]="$BUILD_NEXTRA"
+          RESULTS[honkit]="$BUILD_HONKIT"
           RESULTS[jekyll]="$BUILD_JEKYLL"
+          RESULTS[mkdocs-material]="$BUILD_MKDOCS"
+          RESULTS[nextra]="$BUILD_NEXTRA"
+          RESULTS[rspress]="$BUILD_RSPRESS"
+          RESULTS[starlight]="$BUILD_STARLIGHT"
+          RESULTS[vitepress]="$BUILD_VITEPRESS"
+          RESULTS[vuepress]="$BUILD_VUEPRESS"
           
           # Collect successful build artifacts
           for d in artifacts/build-*/; do
@@ -194,17 +194,41 @@ jobs:
             cp -r "$d"* "_site/$fw/" 2>/dev/null || true
           done
           
-          # Generate iframe cards (sorted alphabetically)
-          # Show successful builds as normal cards, failed builds as error cards
+          # Generate iframe cards using frameworks.json config
           CARDS=""
           for fw in $(echo "${!RESULTS[@]}" | tr ' ' '\n' | sort); do
-            result="${RESULTS[$fw]}"
+            # Get links from frameworks.json
+            links=$(cat docship-repo/showcase/frameworks.json | python3 -c "import sys,json; d=json.load(sys.stdin); print('|'.join(d.get('$fw',{}).get('links',[])))" 2>/dev/null || echo "")
+            
+            # Generate title with links
+            if [[ "$links" == *"|"* ]]; then
+              # Multiple links
+              TITLE=""
+              first=true
+              IFS='|' read -ra LINK_ARR <<< "$links"
+              for link in "${LINK_ARR[@]}"; do
+                name=$(basename "$link")
+                if [ "$first" = true ]; then
+                  TITLE="<a href='${link}' target='_blank'>${name}</a>"
+                  first=false
+                else
+                  TITLE="${TITLE} + <a href='${link}' target='_blank'>${name}</a>"
+                fi
+              done
+            elif [ -n "$links" ]; then
+              # Single link
+              TITLE="<a href='${links}' target='_blank'>${fw}</a>"
+            else
+              # No link configured
+              TITLE="${fw}"
+            fi
+            
             if [ -d "_site/$fw" ] && [ "$(ls -A _site/$fw 2>/dev/null)" ]; then
               # Success - show iframe
-              CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${fw}</h3><a href='${fw}/' target='_blank'>Open</a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy'></iframe></div></div>"
+              CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${TITLE}</h3><a href='${fw}/' target='_blank'>Open</a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy'></iframe></div></div>"
             else
               # Failed - show error message
-              CARDS="${CARDS}<div class='card card-error'><div class='hdr'><h3>${fw}</h3><span class='status'>Build Failed</span></div><div class='iframe-wrap desktop'><div class='error-msg'>Build failed. Check workflow logs for details.</div></div></div>"
+              CARDS="${CARDS}<div class='card card-error'><div class='hdr'><h3>${TITLE}</h3><span class='status'>Build Failed</span></div><div class='iframe-wrap desktop'><div class='error-msg'>Build failed. Check workflow logs for details.</div></div></div>"
             fi
           done
           

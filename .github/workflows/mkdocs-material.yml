@@ -121,7 +121,11 @@ jobs:
             - search
           
           extra:
-            generator: false
+            social:
+              - icon: fontawesome/brands/github
+                link: https://github.com/${GITHUB_REPOSITORY}
+          
+          copyright: Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/squidfunk/mkdocs-material" target="_blank">MkDocs Material</a>
           
           markdown_extensions:
             - pymdownx.highlight:

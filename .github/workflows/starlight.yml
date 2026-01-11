@@ -103,6 +103,34 @@ jobs:
           
           cd temp-site
           
+          # Create custom Footer component
+          mkdir -p src/components
+          cat > src/components/Footer.astro << 'FOOTEREOF'
+          ---
+          import Default from '@astrojs/starlight/components/Footer.astro';
+          ---
+          <Default {...Astro.props}><slot /></Default>
+          <div class="custom-footer">
+            Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/withastro/starlight" target="_blank">Starlight</a>
+          </div>
+          <style>
+            .custom-footer {
+              text-align: center;
+              padding: 1rem;
+              font-size: 0.875rem;
+              color: var(--sl-color-gray-3);
+              border-top: 1px solid var(--sl-color-gray-5);
+            }
+            .custom-footer a {
+              color: var(--sl-color-text-accent);
+              text-decoration: none;
+            }
+            .custom-footer a:hover {
+              text-decoration: underline;
+            }
+          </style>
+          FOOTEREOF
+          
           SIDEBAR_ITEMS="{ slug: '' },"
           for dir in src/content/docs/*/; do
             if [ -d "$dir" ]; then
@@ -140,7 +168,10 @@ jobs:
                 sidebar: [
                   ${SIDEBAR_ITEMS}
                 ],
-                credits: false,
+                credits: true,
+                components: {
+                  Footer: './src/components/Footer.astro',
+                },
               }),
             ],
           });

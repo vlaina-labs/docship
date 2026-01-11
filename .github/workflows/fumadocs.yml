@@ -183,6 +183,9 @@ jobs:
               <html lang="en" className={inter.className} suppressHydrationWarning>
                 <body className="flex flex-col min-h-screen">
                   <Provider>{children}</Provider>
+                  <footer style={{ textAlign: 'center', padding: '20px', fontSize: '14px', color: '#666', borderTop: '1px solid #eee' }}>
+                    Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank" style={{ color: '#0070f3' }}>NekoTick</a> · <a href="https://github.com/fuma-nama/fumadocs" target="_blank" style={{ color: '#0070f3' }}>Fumadocs</a>
+                  </footer>
                 </body>
               </html>
             );

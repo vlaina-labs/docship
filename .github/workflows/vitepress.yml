@@ -95,7 +95,10 @@ jobs:
               search: { provider: 'local' },
               nav: [{ text: 'GitHub', link: 'https://github.com/${GITHUB_REPOSITORY}' }],
               sidebar: 'auto',
-              socialLinks: [{ icon: 'github', link: 'https://github.com/${GITHUB_REPOSITORY_OWNER}' }]
+              socialLinks: [{ icon: 'github', link: 'https://github.com/${GITHUB_REPOSITORY_OWNER}' }],
+              footer: {
+                message: 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/vuejs/vitepress" target="_blank">VitePress</a>'
+              }
             }
           }
           CONFIGEOF
