@@ -121,10 +121,9 @@ jobs:
           .nekotick-footer {
             text-align: center;
             padding: 1rem 0;
-            margin-top: 1rem;
+            margin-top: 0.5rem;
             font-size: 0.85rem;
             color: var(--color-foreground-secondary);
-            border-top: 1px solid var(--color-background-border);
           }
           .nekotick-footer a {
             color: var(--color-foreground-secondary);
@@ -136,20 +135,21 @@ jobs:
           }
           CSSEOF
           
-          # Create custom footer template
-          mkdir -p docs/_templates
-          cat > docs/_templates/footer.html << 'FOOTEREOF'
-          {% extends "furo/footer.html" %}
-          {% block footer %}
-          {{ super() }}
-          <div class="nekotick-footer">
-            Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a>
-          </div>
-          {% endblock %}
-          FOOTEREOF
+          # Create JS to inject footer
+          cat > docs/_static/nekotick.js << 'JSEOF'
+          document.addEventListener('DOMContentLoaded', function() {
+            var footer = document.querySelector('.bottom-of-page');
+            if (footer) {
+              var nekotickDiv = document.createElement('div');
+              nekotickDiv.className = 'nekotick-footer';
+              nekotickDiv.innerHTML = 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a>';
+              footer.appendChild(nekotickDiv);
+            }
+          });
+          JSEOF
           
-          # Add templates_path to conf.py
-          echo "templates_path = ['_templates']" >> docs/conf.py
+          # Add JS file to conf.py
+          echo "html_js_files = ['nekotick.js']" >> docs/conf.py
 
       - name: Copy user content
         run: |
