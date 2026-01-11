@@ -32,7 +32,6 @@ jobs:
 
       - name: Setup mdBook
         run: |
-          # Get latest version from GitHub API
           MDBOOK_VERSION=$(curl -s https://api.github.com/repos/rust-lang/mdBook/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
           echo "Installing mdBook ${MDBOOK_VERSION}"
           mkdir -p ~/.local/bin
@@ -68,26 +67,12 @@ jobs:
           
           mkdir -p src
           
-          # Create book.toml
-          cat > book.toml << EOF
-[book]
-title = "${OWNER}/${REPO_NAME}"
-authors = ["${OWNER}"]
-language = "en"
-
-[output.html]
-site-url = "${BASE_PATH}"
-git-repository-url = "${GITHUB_URL}"
-default-theme = "light"
-preferred-dark-theme = "navy"
-EOF
+          printf '%s\n' '[book]' "title = \"${OWNER}/${REPO_NAME}\"" "authors = [\"${OWNER}\"]" 'language = "en"' '' '[output.html]' "site-url = \"${BASE_PATH}\"" "git-repository-url = \"${GITHUB_URL}\"" 'default-theme = "light"' 'preferred-dark-theme = "navy"' > book.toml
 
       - name: Copy user content
         run: |
-          # Copy markdown files to src/
           find /tmp/user-content -maxdepth 1 -type f -name "*.md" -exec cp {} src/ \; 2>/dev/null || true
           
-          # Copy directories to src/
           for dir in /tmp/user-content/*/; do
             if [ -d "$dir" ]; then
               dirname=$(basename "$dir")
@@ -98,7 +83,6 @@ EOF
             fi
           done
           
-          # Handle README.md as index
           if [ -f "src/index.md" ]; then
             mv src/index.md src/README.md
           elif [ ! -f "src/README.md" ]; then
@@ -106,40 +90,27 @@ EOF
             if [ -n "$FIRST_DOC" ]; then
               cp "$FIRST_DOC" src/README.md
             else
-              REPO_NAME="${GITHUB_REPOSITORY#*/}"
-              OWNER="${GITHUB_REPOSITORY_OWNER}"
-              printf '%s\n' "# Welcome" "" "Documentation for ${OWNER}/${REPO_NAME}." "" "Add markdown files to get started." > src/README.md
+              printf '%s\n' "# Welcome" "" "Add markdown files to get started." > src/README.md
             fi
           fi
 
       - name: Generate SUMMARY.md
         run: |
-          # Generate SUMMARY.md from directory structure
-          cat > src/SUMMARY.md << 'EOF'
-# Summary
-
-[Introduction](README.md)
-
-EOF
+          printf '%s\n' '# Summary' '' '[Introduction](README.md)' '' > src/SUMMARY.md
           
-          # Add root level markdown files
           for f in $(find src -maxdepth 1 -name "*.md" ! -name "README.md" ! -name "SUMMARY.md" -type f | sort); do
             filename=$(basename "$f" .md)
             title=$(echo "$filename" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
             echo "- [${title}](${filename}.md)" >> src/SUMMARY.md
           done
           
-          # Add directories as chapters
           for dir in src/*/; do
             if [ -d "$dir" ]; then
               dirname=$(basename "$dir")
               title=$(echo "$dirname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
               
-              # Check if directory has markdown files
               if find "$dir" -name "*.md" -type f | head -1 | grep -q .; then
-                echo "" >> src/SUMMARY.md
-                echo "# ${title}" >> src/SUMMARY.md
-                echo "" >> src/SUMMARY.md
+                printf '\n# %s\n\n' "${title}" >> src/SUMMARY.md
                 
                 for f in $(find "$dir" -maxdepth 1 -name "*.md" -type f | sort); do
                   fname=$(basename "$f" .md)
@@ -151,66 +122,18 @@ EOF
           done
 
       - name: Add custom theme for logo and footer
-        env:
-          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
         run: |
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           AVATAR_URL="https://github.com/${OWNER}.png"
-          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
           
           mkdir -p theme
           
-          # Download default index.hbs and modify it
-          curl -sL "https://raw.githubusercontent.com/rust-lang/mdBook/master/crates/mdbook-html/src/theme/index.hbs" -o theme/index.hbs || true
+          printf '%s\n' "<link rel=\"icon\" href=\"${AVATAR_URL}\">" '<style>' '.menu-title::before {' '  content: "";' '  display: inline-block;' '  width: 24px;' '  height: 24px;' "  background-image: url('${AVATAR_URL}');" '  background-size: cover;' '  border-radius: 50%;' '  margin-right: 8px;' '  vertical-align: middle;' '}' '</style>' > theme/head.hbs
           
-          # If download failed, create minimal custom head.hbs instead
-          if [ ! -f "theme/index.hbs" ] || [ ! -s "theme/index.hbs" ]; then
-            rm -f theme/index.hbs
-            
-            # Create head.hbs for favicon
-            cat > theme/head.hbs << EOF
-<link rel="icon" href="${AVATAR_URL}">
-<style>
-  .menu-title::before {
-    content: '';
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    background-image: url('${AVATAR_URL}');
-    background-size: cover;
-    border-radius: 50%;
-    margin-right: 8px;
-    vertical-align: middle;
-  }
-  footer {
-    text-align: center;
-    padding: 1rem;
-    font-size: 0.9rem;
-    color: var(--fg);
-    border-top: 1px solid var(--quote-border);
-    margin-top: 2rem;
-  }
-  footer a {
-    color: var(--links);
-  }
-</style>
-EOF
-          else
-            # Modify index.hbs to add favicon and footer
-            # Add favicon in head
-            sed -i 's|</head>|<link rel="icon" href="'"${AVATAR_URL}"'">\n</head>|' theme/index.hbs
-            
-            # Add logo before menu-title
-            sed -i 's|<i class="fa fa-bars"></i>|<i class="fa fa-bars"></i>\n<style>.menu-title::before{content:"";display:inline-block;width:24px;height:24px;background-image:url('"'"''"${AVATAR_URL}"''"'"');background-size:cover;border-radius:50%;margin-right:8px;vertical-align:middle;}</style>|' theme/index.hbs
-            
-            # Add footer before closing main tag
-            sed -i 's|</main>|<footer style="text-align:center;padding:1rem;font-size:0.9rem;border-top:1px solid var(--quote-border);margin-top:2rem;">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/rust-lang/mdBook" target="_blank">mdBook</a></footer>\n</main>|' theme/index.hbs
-          fi
+          printf '%s\n' '<footer style="text-align:center;padding:1rem;font-size:0.9rem;border-top:1px solid var(--quote-border);margin-top:2rem;">' '  Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/rust-lang/mdBook" target="_blank">mdBook</a>' '</footer>' > theme/footer.hbs
 
       - name: Build mdBook
-        run: |
-          mdbook build
+        run: mdbook build
 
       - name: Setup Pages
         if: ${{ inputs.deploy != false }}
