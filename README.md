@@ -29,13 +29,20 @@ jobs:
 
 | Framework | Workflow File | Features |
 |-----------|---------------|----------|
-| Docsify | `docsify.yml` | Pure frontend rendering, no build required, lightweight |
+| Docsify | `docsify.yml` | Pure frontend, no build required |
 | Docusaurus | `docusaurus.yml` | React-powered, feature-rich |
-| VitePress | `vitepress.yml` | Vue-powered, fast |
+| Docute | `docute.yml` | Pure frontend, Vue-based |
+| DocFX | `docfx.yml` | .NET ecosystem |
+| Fumadocs | `fumadocs.yml` | Next.js-powered |
+| HonKit | `honkit.yml` | GitBook fork |
+| Jekyll | `jekyll-just-the-docs.yml` | Ruby ecosystem, Just the Docs theme |
+| mdBook | `mdbook.yml` | Rust-powered, lightweight |
 | MkDocs Material | `mkdocs-material.yml` | Python ecosystem, Material theme |
-| Starlight | `starlight.yml` | Astro framework |
+| Nextra | `nextra.yml` | Next.js-powered |
 | Rspress | `rspress.yml` | Rspack-powered |
-| Fumadocs | `fumadocs.yml` | Next.js-powered, modern UI |
+| Starlight | `starlight.yml` | Astro framework |
+| VitePress | `vitepress.yml` | Vue-powered, fast |
+| VuePress | `vuepress.yml` | Vue 2 ecosystem |
 
 ## Examples
 
