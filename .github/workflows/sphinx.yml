@@ -115,24 +115,32 @@ jobs:
           sed -i "s|OWNER_PLACEHOLDER|${OWNER}|g" docs/conf.py
           sed -i "s|GITHUB_URL_PLACEHOLDER|${GITHUB_URL}|g" docs/conf.py
           
-          # Create custom CSS for footer
+          # Create custom CSS for footer with links
           cat > docs/_static/custom.css << 'CSSEOF'
           .footer-item {
             font-size: 0.9rem;
           }
-          footer {
+          .related-information {
             text-align: center;
           }
-          footer::after {
-            content: 'Powered by NekoTick · Sphinx';
+          .related-information::after {
+            content: 'Powered by NekoTick · Sphinx + Furo';
             display: block;
             margin-top: 0.5rem;
             font-size: 0.85rem;
           }
-          footer a[href*="nekotick"], footer a[href*="sphinx"] {
-            color: var(--color-link);
-          }
           CSSEOF
+          
+          # Create footer template override for clickable links
+          mkdir -p docs/_templates
+          cat > docs/_templates/footer.html << 'FOOTEREOF'
+          <div class="related-information">
+            Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/sphinx-doc/sphinx" target="_blank">Sphinx</a> + <a href="https://github.com/pradyunsg/furo" target="_blank">Furo</a>
+          </div>
+          FOOTEREOF
+          
+          # Add templates path to conf.py
+          echo "templates_path = ['_templates']" >> docs/conf.py
 
       - name: Copy user content
         run: |
@@ -143,61 +151,74 @@ jobs:
             fi
           done
           
-          # Copy directories
+          # Copy directories and their markdown files
           for dir in /tmp/user-content/*/; do
             if [ -d "$dir" ]; then
               dirname=$(basename "$dir")
               case "$dirname" in
                 _build|_static|__pycache__) ;;
-                *) cp -r "$dir" "docs/" 2>/dev/null || true ;;
+                *)
+                  mkdir -p "docs/${dirname}"
+                  find "$dir" -name "*.md" -type f -exec cp {} "docs/${dirname}/" \; 2>/dev/null || true
+                  ;;
+              esac
+            fi
+          done
+
+      - name: Generate index with toctree
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          
+          # Create index.md with toctree containing all files
+          cat > docs/index.md << 'INDEXEOF'
+          # Welcome
+          
+          Documentation for OWNER_PLACEHOLDER/REPO_PLACEHOLDER.
+          
+          ```{toctree}
+          :maxdepth: 2
+          :caption: Contents
+          
+          INDEXEOF
+          sed -i 's/^          //' docs/index.md
+          sed -i "s|OWNER_PLACEHOLDER|${OWNER}|g" docs/index.md
+          sed -i "s|REPO_PLACEHOLDER|${REPO_NAME}|g" docs/index.md
+          
+          # Add root level markdown files to toctree
+          for f in docs/*.md; do
+            if [ -f "$f" ]; then
+              filename=$(basename "$f" .md)
+              if [ "$filename" != "index" ]; then
+                echo "${filename}" >> docs/index.md
+              fi
+            fi
+          done
+          
+          # Add subdirectories to toctree
+          for dir in docs/*/; do
+            if [ -d "$dir" ]; then
+              dirname=$(basename "$dir")
+              case "$dirname" in
+                _build|_static|__pycache__) ;;
+                *)
+                  # Add directory index or first file
+                  if [ -f "${dir}index.md" ]; then
+                    echo "${dirname}/index" >> docs/index.md
+                  else
+                    for f in "${dir}"*.md; do
+                      if [ -f "$f" ]; then
+                        fname=$(basename "$f" .md)
+                        echo "${dirname}/${fname}" >> docs/index.md
+                      fi
+                    done
+                  fi
+                  ;;
               esac
             fi
           done
           
-          # Create index.md if not exists
-          if [ ! -f "docs/index.md" ] && [ ! -f "docs/index.rst" ]; then
-            REPO_NAME="${GITHUB_REPOSITORY#*/}"
-            OWNER="${GITHUB_REPOSITORY_OWNER}"
-            cat > docs/index.md << INDEXEOF
-          # Welcome
-          
-          Documentation for ${OWNER}/${REPO_NAME}.
-          
-          ## Contents
-          
-          \`\`\`{toctree}
-          :maxdepth: 2
-          
-          INDEXEOF
-            
-            # Add all markdown files to toctree
-            for f in docs/*.md; do
-              if [ -f "$f" ] && [ "$(basename "$f")" != "index.md" ]; then
-                filename=$(basename "$f" .md)
-                echo "${filename}" >> docs/index.md
-              fi
-            done
-            
-            echo '```' >> docs/index.md
-          fi
-
-      - name: Ensure toctree in index
-        run: |
-          # If index exists but has no toctree, add one
-          if [ -f "docs/index.md" ] && ! grep -q "toctree" docs/index.md; then
-            echo '' >> docs/index.md
-            echo '```{toctree}' >> docs/index.md
-            echo ':maxdepth: 2' >> docs/index.md
-            echo ':hidden:' >> docs/index.md
-            echo '' >> docs/index.md
-            for f in docs/*.md; do
-              if [ -f "$f" ] && [ "$(basename "$f")" != "index.md" ]; then
-                filename=$(basename "$f" .md)
-                echo "${filename}" >> docs/index.md
-              fi
-            done
-            echo '```' >> docs/index.md
-          fi
+          echo '```' >> docs/index.md
 
       - name: Build Sphinx site
         run: sphinx-build -b html docs docs/_build/html

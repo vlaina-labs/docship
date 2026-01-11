@@ -127,7 +127,7 @@ jobs:
       base_path_suffix: eleventy
       deploy: false
 
-  build-pelican:
+  build-sphinx:
     name: sphinx
     uses: ./.github/workflows/sphinx.yml
     with:
@@ -153,7 +153,7 @@ jobs:
       - build-jekyll
       - build-mdbook
       - build-eleventy
-      - build-pelican
+      - build-sphinx
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -186,7 +186,7 @@ jobs:
           BUILD_JEKYLL: ${{ needs.build-jekyll.result }}
           BUILD_MDBOOK: ${{ needs.build-mdbook.result }}
           BUILD_ELEVENTY: ${{ needs.build-eleventy.result }}
-          BUILD_PELICAN: ${{ needs.build-pelican.result }}
+          BUILD_SPHINX: ${{ needs.build-sphinx.result }}
         run: |
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
@@ -210,7 +210,7 @@ jobs:
           RESULTS[mdbook]="$BUILD_MDBOOK"
           RESULTS[mkdocs-material]="$BUILD_MKDOCS"
           RESULTS[nextra]="$BUILD_NEXTRA"
-          RESULTS[sphinx]="$BUILD_PELICAN"
+          RESULTS[sphinx]="$BUILD_SPHINX"
           RESULTS[rspress]="$BUILD_RSPRESS"
           RESULTS[starlight]="$BUILD_STARLIGHT"
           RESULTS[vitepress]="$BUILD_VITEPRESS"
