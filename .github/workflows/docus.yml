@@ -128,6 +128,17 @@ jobs:
           </template>
           FOOTEREOF
           
+          # Create redirect page for root
+          mkdir -p app/pages
+          cat > app/pages/index.vue << 'PAGEEOF'
+          <script setup>
+          await navigateTo('/docs', { redirectCode: 301 })
+          </script>
+          <template>
+            <div>Redirecting...</div>
+          </template>
+          PAGEEOF
+          
           # Create content directory
           mkdir -p content
           
@@ -214,12 +225,11 @@ jobs:
             fi
           done
           
-          # Create index.md that redirects to docs
+          # Create simple index.md (redirect handled by app/pages/index.vue)
           cat > content/index.md << 'INDEXEOF'
           ---
           title: Home
           navigation: false
-          redirect: /docs
           ---
           INDEXEOF
           
