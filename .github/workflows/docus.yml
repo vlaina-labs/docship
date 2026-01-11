@@ -130,24 +130,34 @@ jobs:
         run: |
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
+          
+          # Create docs directory for all documentation content
+          mkdir -p "content/1.docs"
+          
+          # Create navigation.yml for docs section
+          printf '%s\n' "title: Documentation" > "content/1.docs/.navigation.yml"
+          
           NAV_ORDER=1
           
-          # Copy and process markdown files
+          # Copy and process markdown files into docs directory
           for f in /tmp/user-content/*.md; do
             if [ -f "$f" ]; then
               basename_noext=$(basename "$f" .md)
               
               # Determine target filename with order prefix
               if [ "$basename_noext" = "index" ]; then
-                target="content/index.md"
+                target="content/1.docs/1.index.md"
               else
-                target="content/${NAV_ORDER}.${basename_noext}.md"
                 NAV_ORDER=$((NAV_ORDER + 1))
+                target="content/1.docs/${NAV_ORDER}.${basename_noext}.md"
               fi
               
               # Add frontmatter if not present
               if ! head -1 "$f" | grep -q "^---"; then
                 title=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                if [ "$basename_noext" = "index" ]; then
+                  title="Introduction"
+                fi
                 printf '%s\n' '---' "title: ${title}" '---' '' > "$target"
                 cat "$f" >> "$target"
               else
@@ -156,31 +166,27 @@ jobs:
             fi
           done
           
-          # Copy directories
+          # Copy directories as sub-sections
+          DIR_ORDER=10
           for dir in /tmp/user-content/*/; do
             if [ -d "$dir" ]; then
               dirname=$(basename "$dir")
               case "$dirname" in
                 node_modules|.output|.nuxt|content|public|app) ;;
                 *)
-                  mkdir -p "content/${NAV_ORDER}.${dirname}"
+                  mkdir -p "content/1.docs/${DIR_ORDER}.${dirname}"
                   
                   # Create navigation.yml for the directory
                   title=$(echo "$dirname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
-                  printf '%s\n' "title: ${title}" > "content/${NAV_ORDER}.${dirname}/.navigation.yml"
+                  printf '%s\n' "title: ${title}" > "content/1.docs/${DIR_ORDER}.${dirname}/.navigation.yml"
                   
                   # Copy and process markdown files in directory
                   SUB_ORDER=1
                   for f in "$dir"*.md; do
                     if [ -f "$f" ]; then
                       basename_noext=$(basename "$f" .md)
-                      
-                      if [ "$basename_noext" = "index" ]; then
-                        target="content/${NAV_ORDER}.${dirname}/index.md"
-                      else
-                        target="content/${NAV_ORDER}.${dirname}/${SUB_ORDER}.${basename_noext}.md"
-                        SUB_ORDER=$((SUB_ORDER + 1))
-                      fi
+                      target="content/1.docs/${DIR_ORDER}.${dirname}/${SUB_ORDER}.${basename_noext}.md"
+                      SUB_ORDER=$((SUB_ORDER + 1))
                       
                       # Add frontmatter if not present
                       if ! head -1 "$f" | grep -q "^---"; then
@@ -193,15 +199,39 @@ jobs:
                     fi
                   done
                   
-                  NAV_ORDER=$((NAV_ORDER + 1))
+                  DIR_ORDER=$((DIR_ORDER + 1))
                   ;;
               esac
             fi
           done
           
-          # Create index.md if not exists
-          if [ ! -f "content/index.md" ]; then
-            printf '%s\n' '---' 'title: Home' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > content/index.md
+          # Create a simple index.md that redirects to docs
+          cat > content/index.md << 'INDEXEOF'
+          ---
+          title: Home
+          navigation: false
+          ---
+          
+          ::u-page-hero
+          #title
+          Welcome to the Documentation
+          
+          #links
+            :::u-button
+            ---
+            color: neutral
+            size: xl
+            to: /docs
+            trailing-icon: i-lucide-arrow-right
+            ---
+            Get Started
+            :::
+          ::
+          INDEXEOF
+          
+          # Create default docs index if none exists
+          if [ ! -f "content/1.docs/1.index.md" ]; then
+            printf '%s\n' '---' 'title: Introduction' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > "content/1.docs/1.index.md"
           fi
 
       - name: Install dependencies
