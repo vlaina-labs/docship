@@ -215,6 +215,7 @@ jobs:
 
       - name: Copy user content
         run: |
+          # Copy root level markdown files as pages
           for f in /tmp/user-content/*.md; do
             if [ -f "$f" ]; then
               filename=$(basename "$f" .md)
@@ -231,12 +232,34 @@ jobs:
             fi
           done
           
+          # Copy directories and process nested markdown files
           for dir in /tmp/user-content/*/; do
             if [ -d "$dir" ]; then
               dirname=$(basename "$dir")
               case "$dirname" in
                 output|__pycache__|theme) ;;
-                *) cp -r "$dir" "content/pages/" 2>/dev/null || true ;;
+                *)
+                  # Process each markdown file in subdirectory
+                  find "$dir" -name "*.md" -type f | while read f; do
+                    relpath="${f#/tmp/user-content/}"
+                    filename=$(basename "$f" .md)
+                    # Create title from directory + filename
+                    dname=$(dirname "$relpath")
+                    dtitle=$(echo "$dname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                    ftitle=$(echo "$filename" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                    title="${dtitle} - ${ftitle}"
+                    slug=$(echo "$relpath" | sed 's/\.md$//' | sed 's/\//-/g')
+                    
+                    if ! head -1 "$f" | grep -q "^Title:"; then
+                      TMPFILE=$(mktemp)
+                      printf 'Title: %s\nSlug: %s\n\n' "$title" "$slug" > "$TMPFILE"
+                      cat "$f" >> "$TMPFILE"
+                      cp "$TMPFILE" "content/pages/${slug}.md"
+                    else
+                      cp "$f" "content/pages/${slug}.md"
+                    fi
+                  done
+                  ;;
               esac
             fi
           done
