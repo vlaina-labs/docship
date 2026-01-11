@@ -117,23 +117,43 @@ jobs:
           
           # Create custom CSS for footer
           cat > docs/_static/custom.css << 'CSSEOF'
-          .bottom-of-page {
+          /* Hide default Furo footer content */
+          .bottom-of-page .related-information {
+            display: none;
+          }
+          /* Add our custom footer */
+          .bottom-of-page::before {
+            content: '';
+            display: block;
             text-align: center;
+            padding: 1rem 0;
+          }
+          .custom-footer {
+            text-align: center;
+            padding: 1rem 0;
+            font-size: 0.9rem;
+          }
+          .custom-footer a {
+            color: var(--color-brand-primary);
           }
           CSSEOF
           
-          # Create custom footer template to override Furo's default
-          mkdir -p docs/_templates/components
-          cat > docs/_templates/components/footer.html << 'FOOTEREOF'
-          <footer>
-            <div class="related-information">
-              Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/sphinx-doc/sphinx" target="_blank">Sphinx</a> + <a href="https://github.com/pradyunsg/furo" target="_blank">Furo</a>
-            </div>
-          </footer>
-          FOOTEREOF
+          # Use Sphinx's html_context to inject custom footer via JavaScript
+          cat >> docs/conf.py << 'CONFEOF'
           
-          # Add templates path to conf.py
-          echo "templates_path = ['_templates']" >> docs/conf.py
+          # Custom footer
+          templates_path = ['_templates']
+          
+          def setup(app):
+              app.add_js_file(None, body='''
+          document.addEventListener("DOMContentLoaded", function() {
+              var footer = document.querySelector(".bottom-of-page .related-information");
+              if (footer) {
+                  footer.innerHTML = 'Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/sphinx-doc/sphinx" target="_blank">Sphinx</a> + <a href="https://github.com/pradyunsg/furo" target="_blank">Furo</a>';
+              }
+          });
+          ''')
+          CONFEOF
 
       - name: Copy user content
         run: |
