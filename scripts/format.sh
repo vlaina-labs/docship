@@ -29,82 +29,11 @@ import remarkGfm from 'remark-gfm'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkStringify from 'remark-stringify'
 import { unified } from 'unified'
-import { visit } from 'unist-util-visit'
-
-// Remove all HTML nodes
-function remarkRemoveHtml() {
-  return (tree) => {
-    visit(tree, 'html', (node, index, parent) => {
-      if (parent && typeof index === 'number') {
-        parent.children.splice(index, 1)
-        return index
-      }
-    })
-  }
-}
-
-// Remove template syntax from text nodes ({{ }}, {% %}, {# #}, etc.)
-function remarkRemoveTemplateSyntax() {
-  return (tree) => {
-    visit(tree, 'text', (node) => {
-      if (node.value) {
-        // Remove {{ ... }} (Vue, Jinja, Nunjucks, Liquid)
-        node.value = node.value.replace(/\{\{[^}]*\}\}/g, '')
-        // Remove {% ... %} (Jinja, Nunjucks, Liquid)
-        node.value = node.value.replace(/\{%[^%]*%\}/g, '')
-        // Remove {# ... #} (Jinja comments)
-        node.value = node.value.replace(/\{#[^#]*#\}/g, '')
-        // Remove remaining {{ or }} (malformed)
-        node.value = node.value.replace(/\{\{/g, '')
-        node.value = node.value.replace(/\}\}/g, '')
-        node.value = node.value.replace(/\{%/g, '')
-        node.value = node.value.replace(/%\}/g, '')
-      }
-    })
-    // Also check inline code - some frameworks parse these too
-    visit(tree, 'inlineCode', (node) => {
-      if (node.value) {
-        node.value = node.value.replace(/\{\{[^}]*\}\}/g, 'code')
-        node.value = node.value.replace(/\{%[^%]*%\}/g, 'code')
-      }
-    })
-  }
-}
-
-// Normalize code block languages
-function remarkNormalizeCodeLang() {
-  const validLangs = new Set([
-    'text', 'plain', 'js', 'javascript', 'ts', 'typescript', 'jsx', 'tsx',
-    'html', 'css', 'scss', 'less', 'json', 'yaml', 'yml', 'xml',
-    'python', 'py', 'ruby', 'rb', 'java', 'kotlin', 'scala', 'groovy',
-    'c', 'cpp', 'csharp', 'cs', 'go', 'rust', 'swift', 'objc',
-    'php', 'perl', 'lua', 'r', 'matlab', 'julia',
-    'bash', 'sh', 'shell', 'zsh', 'powershell', 'ps1', 'bat', 'cmd',
-    'sql', 'graphql', 'markdown', 'md', 'diff', 'dockerfile', 'docker',
-    'nginx', 'apache', 'ini', 'toml', 'properties',
-    'vue', 'svelte', 'astro', 'mdx'
-  ])
-  
-  return (tree) => {
-    visit(tree, 'code', (node) => {
-      if (node.lang) {
-        const lang = node.lang.toLowerCase().split(' ')[0]
-        if (!validLangs.has(lang)) {
-          node.lang = 'text'
-        }
-      }
-      node.meta = null
-    })
-  }
-}
 
 export const processor = unified()
   .use(remarkParse)
   .use(remarkFrontmatter, ['yaml', 'toml'])
   .use(remarkGfm)
-  .use(remarkRemoveHtml)
-  .use(remarkRemoveTemplateSyntax)
-  .use(remarkNormalizeCodeLang)
   .use(remarkStringify, {
     bullet: '-',
     emphasis: '*',
@@ -140,7 +69,7 @@ EOF
 echo "馃摝 Installing remark..."
 cd "$TEMP_DIR"
 npm init -y > /dev/null 2>&1
-if ! npm install unified remark-parse remark-gfm remark-frontmatter remark-stringify unist-util-visit --silent 2>/dev/null; then
+if ! npm install unified remark-parse remark-gfm remark-frontmatter remark-stringify --silent 2>/dev/null; then
   echo "鉂?Failed to install remark dependencies"
   exit 1
 fi
