@@ -235,10 +235,13 @@ jobs:
           ROUTES="['/'"
           for f in $(find content -name "*.md" -type f); do
             # Convert content/1.docs/1.index.md to /docs/index
+            # Remove content/ prefix, .md suffix, and number prefixes
             route=$(echo "$f" | sed 's|^content/||' | sed 's|\.md$||' | sed 's|/[0-9]*\.|/|g' | sed 's|^[0-9]*\.||')
-            # Handle index files
-            route=$(echo "$route" | sed 's|/index$||')
-            if [ -n "$route" ]; then
+            # Convert to lowercase for URL
+            route=$(echo "$route" | tr '[:upper:]' '[:lower:]')
+            # Handle index files - keep them as /docs not /docs/index
+            if [ "$route" != "index" ]; then
+              route=$(echo "$route" | sed 's|/index$||')
               ROUTES="$ROUTES, '/$route'"
             fi
           done
@@ -247,8 +250,6 @@ jobs:
           
           # Update nuxt.config.ts with dynamic routes
           sed -i "s|routes: \[.*\]|routes: $ROUTES|" nuxt.config.ts
-          
-          cat nuxt.config.ts
           
           npm run generate
 
@@ -259,6 +260,28 @@ jobs:
           echo "=== Content directory ==="
           ls -la content/
           ls -la content/1.docs/ 2>/dev/null || true
+
+      - name: Create index redirect
+        run: |
+          # Create HTML redirect for root index
+          cat > .output/public/index.html << 'REDIRECTEOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <script>
+              var base = window.location.pathname.replace(/\/+$/, '');
+              window.location.href = base + '/docs';
+            </script>
+          </head>
+          <body>
+            <p>Redirecting to documentation...</p>
+          </body>
+          </html>
+          REDIRECTEOF
+          
+          # Remove the broken index file if exists
+          rm -f .output/public/index 2>/dev/null || true
 
       - name: Setup Pages
         if: ${{ inputs.deploy != false }}
