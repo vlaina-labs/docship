@@ -98,6 +98,16 @@ jobs:
               name: '${OWNER}/${REPO_NAME}',
             },
             compatibilityDate: '2025-07-18',
+            robots: {
+              robotsTxt: false,
+            },
+            nitro: {
+              prerender: {
+                crawlLinks: true,
+                routes: ['/'],
+                failOnError: false,
+              },
+            },
           })
           NUXTEOF
           
@@ -222,44 +232,13 @@ jobs:
       - name: Build Docus site
         run: npm run generate
 
-      - name: Create index redirect
+      - name: Debug output
         run: |
-          # Find the first doc page and redirect to it
-          FIRST_DOC=$(find .output/public/docs -name "*.html" 2>/dev/null | head -1 || echo "")
-          
-          if [ -n "$FIRST_DOC" ]; then
-            # docs directory exists
-            REDIRECT_PATH="docs"
-          else
-            # Try to find any html file
-            FIRST_DOC=$(find .output/public -maxdepth 2 -name "*.html" ! -name "index.html" 2>/dev/null | head -1 || echo "")
-            if [ -n "$FIRST_DOC" ]; then
-              REDIRECT_PATH=$(dirname "$FIRST_DOC" | sed 's|.output/public/||')
-            else
-              REDIRECT_PATH=""
-            fi
-          fi
-          
-          echo "Redirect path: $REDIRECT_PATH"
-          ls -la .output/public/ || true
-          ls -la .output/public/docs/ 2>/dev/null || true
-          
-          # Create HTML redirect for root index using relative path
-          cat > .output/public/index.html << REDIRECTEOF
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <script>
-              var path = window.location.pathname.replace(/\/$/, '');
-              window.location.href = path + '/${REDIRECT_PATH}';
-            </script>
-          </head>
-          <body>
-            <p>Redirecting to documentation...</p>
-          </body>
-          </html>
-          REDIRECTEOF
+          echo "=== Output structure ==="
+          find .output/public -type f | head -50
+          echo "=== Content directory ==="
+          ls -la content/
+          ls -la content/1.docs/ 2>/dev/null || true
 
       - name: Setup Pages
         if: ${{ inputs.deploy != false }}
