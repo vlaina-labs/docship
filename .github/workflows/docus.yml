@@ -128,17 +128,6 @@ jobs:
           </template>
           FOOTEREOF
           
-          # Create redirect page for root
-          mkdir -p app/pages
-          cat > app/pages/index.vue << 'PAGEEOF'
-          <script setup>
-          await navigateTo('/docs', { redirectCode: 301 })
-          </script>
-          <template>
-            <div>Redirecting...</div>
-          </template>
-          PAGEEOF
-          
           # Create content directory
           mkdir -p content
           
@@ -151,32 +140,26 @@ jobs:
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           
-          # Create docs directory for all documentation content
-          mkdir -p "content/1.docs"
-          
-          # Create navigation.yml for docs section
-          printf '%s\n' "title: Documentation" > "content/1.docs/.navigation.yml"
-          
           NAV_ORDER=1
           
-          # Copy and process markdown files into docs directory
+          # Copy and process markdown files directly to content root
           for f in /tmp/user-content/*.md; do
             if [ -f "$f" ]; then
               basename_noext=$(basename "$f" .md)
               
               # Determine target filename with order prefix
               if [ "$basename_noext" = "index" ]; then
-                target="content/1.docs/1.index.md"
+                target="content/index.md"
               else
                 NAV_ORDER=$((NAV_ORDER + 1))
-                target="content/1.docs/${NAV_ORDER}.${basename_noext}.md"
+                target="content/${NAV_ORDER}.${basename_noext}.md"
               fi
               
               # Add frontmatter if not present
               if ! head -1 "$f" | grep -q "^---"; then
                 title=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
                 if [ "$basename_noext" = "index" ]; then
-                  title="Introduction"
+                  title="Home"
                 fi
                 printf '%s\n' '---' "title: ${title}" '---' '' > "$target"
                 cat "$f" >> "$target"
@@ -194,18 +177,18 @@ jobs:
               case "$dirname" in
                 node_modules|.output|.nuxt|content|public|app) ;;
                 *)
-                  mkdir -p "content/1.docs/${DIR_ORDER}.${dirname}"
+                  mkdir -p "content/${DIR_ORDER}.${dirname}"
                   
                   # Create navigation.yml for the directory
                   title=$(echo "$dirname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
-                  printf '%s\n' "title: ${title}" > "content/1.docs/${DIR_ORDER}.${dirname}/.navigation.yml"
+                  printf '%s\n' "title: ${title}" > "content/${DIR_ORDER}.${dirname}/.navigation.yml"
                   
                   # Copy and process markdown files in directory
                   SUB_ORDER=1
                   for f in "$dir"*.md; do
                     if [ -f "$f" ]; then
                       basename_noext=$(basename "$f" .md)
-                      target="content/1.docs/${DIR_ORDER}.${dirname}/${SUB_ORDER}.${basename_noext}.md"
+                      target="content/${DIR_ORDER}.${dirname}/${SUB_ORDER}.${basename_noext}.md"
                       SUB_ORDER=$((SUB_ORDER + 1))
                       
                       # Add frontmatter if not present
@@ -225,17 +208,9 @@ jobs:
             fi
           done
           
-          # Create simple index.md (redirect handled by app/pages/index.vue)
-          cat > content/index.md << 'INDEXEOF'
-          ---
-          title: Home
-          navigation: false
-          ---
-          INDEXEOF
-          
-          # Create default docs index if none exists
-          if [ ! -f "content/1.docs/1.index.md" ]; then
-            printf '%s\n' '---' 'title: Introduction' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > "content/1.docs/1.index.md"
+          # Create default index.md if none exists
+          if [ ! -f "content/index.md" ]; then
+            printf '%s\n' '---' 'title: Home' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > "content/index.md"
           fi
 
       - name: Install dependencies
