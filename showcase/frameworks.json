@@ -20,6 +20,9 @@
   "jekyll": {
     "links": ["https://github.com/jekyll/jekyll", "https://github.com/just-the-docs/just-the-docs"]
   },
+  "mdbook": {
+    "links": ["https://github.com/rust-lang/mdBook"]
+  },
   "mkdocs-material": {
     "links": ["https://github.com/squidfunk/mkdocs-material"]
   },

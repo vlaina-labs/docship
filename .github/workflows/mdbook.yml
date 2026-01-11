@@ -1,0 +1,240 @@
+name: Deploy mdBook to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-mdbook"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup mdBook
+        run: |
+          mkdir -p ~/.local/bin
+          curl -sL https://github.com/rust-lang/mdBook/releases/latest/download/mdbook-v0.4.44-x86_64-unknown-linux-gnu.tar.gz | tar xz -C ~/.local/bin
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|book/|node_modules/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Format markdown content
+        run: |
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh /tmp/user-content
+
+      - name: Setup mdBook project
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}/"
+          
+          mkdir -p src
+          
+          # Create book.toml
+          cat > book.toml << CONFIGEOF
+          [book]
+          title = "${OWNER}/${REPO_NAME}"
+          authors = ["${OWNER}"]
+          language = "en"
+          
+          [output.html]
+          site-url = "${BASE_PATH}"
+          git-repository-url = "${GITHUB_URL}"
+          default-theme = "light"
+          preferred-dark-theme = "navy"
+          CONFIGEOF
+
+      - name: Copy user content
+        run: |
+          # Copy markdown files to src/
+          find /tmp/user-content -maxdepth 1 -type f -name "*.md" -exec cp {} src/ \; 2>/dev/null || true
+          
+          # Copy directories to src/
+          for dir in /tmp/user-content/*/; do
+            if [ -d "$dir" ]; then
+              dirname=$(basename "$dir")
+              case "$dirname" in
+                src|book) ;;
+                *) cp -r "$dir" "src/" 2>/dev/null || true ;;
+              esac
+            fi
+          done
+          
+          # Handle README.md as index
+          if [ -f "src/index.md" ]; then
+            mv src/index.md src/README.md
+          elif [ ! -f "src/README.md" ]; then
+            FIRST_DOC=$(find src -maxdepth 1 -name "*.md" -type f | sort | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              cp "$FIRST_DOC" src/README.md
+            else
+              REPO_NAME="${GITHUB_REPOSITORY#*/}"
+              OWNER="${GITHUB_REPOSITORY_OWNER}"
+              printf '%s\n' "# Welcome" "" "Documentation for ${OWNER}/${REPO_NAME}." "" "Add markdown files to get started." > src/README.md
+            fi
+          fi
+
+      - name: Generate SUMMARY.md
+        run: |
+          # Generate SUMMARY.md from directory structure
+          cat > src/SUMMARY.md << 'SUMMARYEOF'
+          # Summary
+          
+          [Introduction](README.md)
+          
+          SUMMARYEOF
+          
+          # Add root level markdown files
+          for f in $(find src -maxdepth 1 -name "*.md" ! -name "README.md" ! -name "SUMMARY.md" -type f | sort); do
+            filename=$(basename "$f" .md)
+            title=$(echo "$filename" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+            echo "- [${title}](${filename}.md)" >> src/SUMMARY.md
+          done
+          
+          # Add directories as chapters
+          for dir in src/*/; do
+            if [ -d "$dir" ]; then
+              dirname=$(basename "$dir")
+              title=$(echo "$dirname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+              
+              # Check if directory has markdown files
+              if find "$dir" -name "*.md" -type f | head -1 | grep -q .; then
+                echo "" >> src/SUMMARY.md
+                echo "# ${title}" >> src/SUMMARY.md
+                echo "" >> src/SUMMARY.md
+                
+                for f in $(find "$dir" -maxdepth 1 -name "*.md" -type f | sort); do
+                  fname=$(basename "$f" .md)
+                  ftitle=$(echo "$fname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                  echo "- [${ftitle}](${dirname}/${fname}.md)" >> src/SUMMARY.md
+                done
+              fi
+            fi
+          done
+
+      - name: Add custom theme for logo and footer
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          
+          mkdir -p theme
+          
+          # Download default index.hbs and modify it
+          curl -sL "https://raw.githubusercontent.com/rust-lang/mdBook/master/crates/mdbook-html/src/theme/index.hbs" -o theme/index.hbs || true
+          
+          # If download failed, create minimal custom head.hbs instead
+          if [ ! -f "theme/index.hbs" ] || [ ! -s "theme/index.hbs" ]; then
+            rm -f theme/index.hbs
+            
+            # Create head.hbs for favicon
+            cat > theme/head.hbs << HEADEOF
+          <link rel="icon" href="${AVATAR_URL}">
+          <style>
+            .menu-title::before {
+              content: '';
+              display: inline-block;
+              width: 24px;
+              height: 24px;
+              background-image: url('${AVATAR_URL}');
+              background-size: cover;
+              border-radius: 50%;
+              margin-right: 8px;
+              vertical-align: middle;
+            }
+            footer {
+              text-align: center;
+              padding: 1rem;
+              font-size: 0.9rem;
+              color: var(--fg);
+              border-top: 1px solid var(--quote-border);
+              margin-top: 2rem;
+            }
+            footer a {
+              color: var(--links);
+            }
+          </style>
+          HEADEOF
+          else
+            # Modify index.hbs to add favicon and footer
+            # Add favicon in head
+            sed -i 's|</head>|<link rel="icon" href="'"${AVATAR_URL}"'">\n</head>|' theme/index.hbs
+            
+            # Add logo before menu-title
+            sed -i 's|<i class="fa fa-bars"></i>|<i class="fa fa-bars"></i>\n<style>.menu-title::before{content:"";display:inline-block;width:24px;height:24px;background-image:url('"'"''"${AVATAR_URL}"''"'"');background-size:cover;border-radius:50%;margin-right:8px;vertical-align:middle;}</style>|' theme/index.hbs
+            
+            # Add footer before closing main tag
+            sed -i 's|</main>|<footer style="text-align:center;padding:1rem;font-size:0.9rem;border-top:1px solid var(--quote-border);margin-top:2rem;">Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/rust-lang/mdBook" target="_blank">mdBook</a></footer>\n</main>|' theme/index.hbs
+          fi
+
+      - name: Build mdBook
+        run: |
+          mdbook build
+
+      - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: book
+
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-mdbook
+          path: book/
+          retention-days: 1
+
+  deploy:
+    if: ${{ inputs.deploy != false }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -256,6 +256,25 @@ Before releasing a theme, test with:
 - [ ] Use `darkThemeToggler: true` for dark mode toggle
 - [ ] No npm cache needed since no build process
 
+## mdBook Configuration
+
+- [ ] mdBook is a Rust-based documentation tool - install via pre-built binary or `cargo install mdbook`
+- [ ] Content goes in `src/` directory
+- [ ] Output directory is `book/`
+- [ ] Config file is `book.toml` (TOML format)
+- [ ] Requires `src/SUMMARY.md` to define table of contents structure
+- [ ] Homepage is `src/README.md` (linked as `[Introduction](README.md)` in SUMMARY.md)
+- [ ] SUMMARY.md format: `- [Title](path/to/file.md)` for chapters
+- [ ] Use `#` headers in SUMMARY.md to create section separators
+- [ ] `[output.html]` section in book.toml for HTML output settings
+- [ ] `site-url` in book.toml for base path (GitHub Pages subdirectory)
+- [ ] Custom theme via `theme/` directory - can override `index.hbs`, `head.hbs`, CSS files
+- [ ] Favicon and logo require custom theme modifications (no direct config option)
+- [ ] Built-in themes: light, rust, coal, navy, ayu
+- [ ] `default-theme` and `preferred-dark-theme` in `[output.html]` section
+- [ ] Supports MathJax via `mathjax-support = true`
+- [ ] Built-in search functionality (no additional config needed)
+
 ## General Lessons Learned
 
 ### Framework Categories
@@ -317,6 +336,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | Docsify | `https://github.com/docsifyjs/docsify` |
 | MkDocs Material | `https://github.com/squidfunk/mkdocs-material` |
 | VuePress | `https://github.com/vuejs/vuepress` |
+| mdBook | `https://github.com/rust-lang/mdBook` |
 
 ### Logo Implementation Patterns
 
@@ -389,6 +409,7 @@ Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
 | Fumadocs | Footer element in app/layout.tsx |
 | Nextra | `footer` prop in Layout component |
 | VuePress | enhanceApp.js DOM injection |
+| mdBook | Custom theme/index.hbs or theme/head.hbs |
 | Jekyll | `footer_content` in _config.yml |
 
 ### 3. Update Showcase

@@ -113,6 +113,13 @@ jobs:
       base_path_suffix: jekyll
       deploy: false
 
+  build-mdbook:
+    name: mdbook
+    uses: ./.github/workflows/mdbook.yml
+    with:
+      base_path_suffix: mdbook
+      deploy: false
+
   # Combine all build artifacts and create showcase page
   combine:
     if: always()
@@ -130,6 +137,7 @@ jobs:
       - build-fumadocs
       - build-nextra
       - build-jekyll
+      - build-mdbook
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -160,6 +168,7 @@ jobs:
           BUILD_FUMADOCS: ${{ needs.build-fumadocs.result }}
           BUILD_NEXTRA: ${{ needs.build-nextra.result }}
           BUILD_JEKYLL: ${{ needs.build-jekyll.result }}
+          BUILD_MDBOOK: ${{ needs.build-mdbook.result }}
         run: |
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
@@ -179,6 +188,7 @@ jobs:
           RESULTS[fumadocs]="$BUILD_FUMADOCS"
           RESULTS[honkit]="$BUILD_HONKIT"
           RESULTS[jekyll]="$BUILD_JEKYLL"
+          RESULTS[mdbook]="$BUILD_MDBOOK"
           RESULTS[mkdocs-material]="$BUILD_MKDOCS"
           RESULTS[nextra]="$BUILD_NEXTRA"
           RESULTS[rspress]="$BUILD_RSPRESS"
