@@ -115,28 +115,21 @@ jobs:
           sed -i "s|OWNER_PLACEHOLDER|${OWNER}|g" docs/conf.py
           sed -i "s|GITHUB_URL_PLACEHOLDER|${GITHUB_URL}|g" docs/conf.py
           
-          # Create custom CSS for footer with links
+          # Create custom CSS for footer
           cat > docs/_static/custom.css << 'CSSEOF'
-          .footer-item {
-            font-size: 0.9rem;
-          }
-          .related-information {
+          .bottom-of-page {
             text-align: center;
-          }
-          .related-information::after {
-            content: 'Powered by NekoTick · Sphinx + Furo';
-            display: block;
-            margin-top: 0.5rem;
-            font-size: 0.85rem;
           }
           CSSEOF
           
-          # Create footer template override for clickable links
-          mkdir -p docs/_templates
-          cat > docs/_templates/footer.html << 'FOOTEREOF'
-          <div class="related-information">
-            Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/sphinx-doc/sphinx" target="_blank">Sphinx</a> + <a href="https://github.com/pradyunsg/furo" target="_blank">Furo</a>
-          </div>
+          # Create custom footer template to override Furo's default
+          mkdir -p docs/_templates/components
+          cat > docs/_templates/components/footer.html << 'FOOTEREOF'
+          <footer>
+            <div class="related-information">
+              Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/sphinx-doc/sphinx" target="_blank">Sphinx</a> + <a href="https://github.com/pradyunsg/furo" target="_blank">Furo</a>
+            </div>
+          </footer>
           FOOTEREOF
           
           # Add templates path to conf.py
