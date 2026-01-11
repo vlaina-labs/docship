@@ -224,8 +224,8 @@ jobs:
             fi
             
             if [ -d "_site/$fw" ] && [ "$(ls -A _site/$fw 2>/dev/null)" ]; then
-              # Success - show iframe with sandbox (no allow-same-origin to isolate localStorage)
-              CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${TITLE}</h3><a href='${fw}/' target='_blank'>Open</a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy' sandbox='allow-scripts allow-popups allow-forms'></iframe></div></div>"
+              # Success - show iframe
+              CARDS="${CARDS}<div class='card'><div class='hdr'><h3>${TITLE}</h3><a href='${fw}/' target='_blank'>Open</a></div><div class='iframe-wrap desktop'><iframe src='${fw}/' loading='lazy'></iframe></div></div>"
             else
               # Failed - show error message
               CARDS="${CARDS}<div class='card card-error'><div class='hdr'><h3>${TITLE}</h3><span class='status'>Build Failed</span></div><div class='iframe-wrap desktop'><div class='error-msg'>Build failed. Check workflow logs for details.</div></div></div>"
