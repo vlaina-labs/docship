@@ -75,9 +75,9 @@ jobs:
           {
             "name": "docs",
             "scripts": {
-              "dev": "nuxt dev --extends docus",
-              "build": "nuxt build --extends docus",
-              "generate": "nuxt generate --extends docus"
+              "dev": "nuxt dev",
+              "build": "nuxt build",
+              "generate": "nuxt generate"
             },
             "dependencies": {
               "docus": "latest",
@@ -87,36 +87,37 @@ jobs:
           }
           EOF
           
-          # Create nuxt.config.ts with base path
-          printf "export default defineNuxtConfig({\n" > nuxt.config.ts
-          printf "  app: {\n" >> nuxt.config.ts
-          printf "    baseURL: '%s',\n" "${BASE_PATH}" >> nuxt.config.ts
-          printf "  },\n" >> nuxt.config.ts
-          printf "  nitro: {\n" >> nuxt.config.ts
-          printf "    preset: 'static',\n" >> nuxt.config.ts
-          printf "  },\n" >> nuxt.config.ts
-          printf "})\n" >> nuxt.config.ts
+          # Create nuxt.config.ts
+          cat > nuxt.config.ts << NUXTEOF
+          export default defineNuxtConfig({
+            extends: ['docus'],
+            app: {
+              baseURL: '${BASE_PATH}',
+            },
+            site: {
+              name: '${OWNER}/${REPO_NAME}',
+            },
+            compatibilityDate: '2025-07-18',
+          })
+          NUXTEOF
           
-          # Create app.config.ts
-          printf "export default defineAppConfig({\n" > app.config.ts
-          printf "  docus: {\n" >> app.config.ts
-          printf "    title: '%s/%s',\n" "${OWNER}" "${REPO_NAME}" >> app.config.ts
-          printf "    description: 'Documentation for %s/%s',\n" "${OWNER}" "${REPO_NAME}" >> app.config.ts
-          printf "    image: '%s',\n" "${AVATAR_URL}" >> app.config.ts
-          printf "    socials: {\n" >> app.config.ts
-          printf "      github: '%s',\n" "${GITHUB_URL}" >> app.config.ts
-          printf "    },\n" >> app.config.ts
-          printf "    header: {\n" >> app.config.ts
-          printf "      logo: true,\n" >> app.config.ts
-          printf "    },\n" >> app.config.ts
-          printf "    footer: {\n" >> app.config.ts
-          printf "      credits: {\n" >> app.config.ts
-          printf "        text: 'Powered by NekoTick · Docus',\n" >> app.config.ts
-          printf "        href: 'https://github.com/NekoTick/NekoTick',\n" >> app.config.ts
-          printf "      },\n" >> app.config.ts
-          printf "    },\n" >> app.config.ts
-          printf "  },\n" >> app.config.ts
-          printf "})\n" >> app.config.ts
+          # Create app directory and app.config.ts
+          mkdir -p app
+          cat > app/app.config.ts << APPEOF
+          export default defineAppConfig({
+            header: {
+              title: '${OWNER}/${REPO_NAME}',
+              logo: {
+                light: '${AVATAR_URL}',
+                dark: '${AVATAR_URL}',
+                alt: '${OWNER}',
+              },
+            },
+            socials: {
+              github: '${GITHUB_URL}',
+            },
+          })
+          APPEOF
           
           # Create content directory
           mkdir -p content
@@ -127,12 +128,13 @@ jobs:
 
       - name: Copy user content
         run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
           NAV_ORDER=1
           
           # Copy and process markdown files
           for f in /tmp/user-content/*.md; do
             if [ -f "$f" ]; then
-              filename=$(basename "$f")
               basename_noext=$(basename "$f" .md)
               
               # Determine target filename with order prefix
@@ -159,9 +161,13 @@ jobs:
             if [ -d "$dir" ]; then
               dirname=$(basename "$dir")
               case "$dirname" in
-                node_modules|.output|.nuxt|content|public) ;;
+                node_modules|.output|.nuxt|content|public|app) ;;
                 *)
                   mkdir -p "content/${NAV_ORDER}.${dirname}"
+                  
+                  # Create navigation.yml for the directory
+                  title=$(echo "$dirname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                  printf '%s\n' "title: ${title}" > "content/${NAV_ORDER}.${dirname}/.navigation.yml"
                   
                   # Copy and process markdown files in directory
                   SUB_ORDER=1
@@ -178,8 +184,8 @@ jobs:
                       
                       # Add frontmatter if not present
                       if ! head -1 "$f" | grep -q "^---"; then
-                        title=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
-                        printf '%s\n' '---' "title: ${title}" '---' '' > "$target"
+                        ftitle=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                        printf '%s\n' '---' "title: ${ftitle}" '---' '' > "$target"
                         cat "$f" >> "$target"
                       else
                         cp "$f" "$target"
@@ -195,8 +201,6 @@ jobs:
           
           # Create index.md if not exists
           if [ ! -f "content/index.md" ]; then
-            REPO_NAME="${GITHUB_REPOSITORY#*/}"
-            OWNER="${GITHUB_REPOSITORY_OWNER}"
             printf '%s\n' '---' 'title: Home' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > content/index.md
           fi
 
