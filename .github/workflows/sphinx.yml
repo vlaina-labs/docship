@@ -126,11 +126,10 @@ jobs:
             color: var(--color-foreground-secondary);
           }
           .nekotick-footer a {
-            color: var(--color-foreground-secondary);
+            color: var(--color-brand-content) !important;
             text-decoration: none;
           }
           .nekotick-footer a:hover {
-            color: var(--color-foreground-primary);
             text-decoration: underline;
           }
           CSSEOF
