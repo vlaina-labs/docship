@@ -106,7 +106,7 @@ jobs:
           OWNER="${GITHUB_REPOSITORY_OWNER}"
           AVATAR_URL="https://github.com/${OWNER}.png"
           
-          mkdir -p theme/templates theme/static/css
+          mkdir -p theme/templates theme/static/css theme/static/js
           
           # Create base.html template
           cat > theme/templates/base.html << 'TEMPLATEEOF'
@@ -128,7 +128,10 @@ jobs:
                     <span>{{ SITENAME }}</span>
                   </a>
                 </div>
-                <nav>
+                <div class="search-box">
+                  <input type="text" id="search-input" placeholder="Search...">
+                </div>
+                <nav id="nav-list">
                   <ul>
                     {% for p in pages %}
                     <li><a href="{{ SITEURL }}/{{ p.url }}"{% if p == page %} class="active"{% endif %}>{{ p.title }}</a></li>
@@ -139,10 +142,15 @@ jobs:
               <main class="content">
                 {% block content %}{% endblock %}
               </main>
+              <aside class="toc">
+                <div class="toc-title">On this page</div>
+                <nav id="toc-nav"></nav>
+              </aside>
             </div>
             <footer>
               Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/getpelican/pelican" target="_blank">Pelican</a>
             </footer>
+            <script src="{{ SITEURL }}/theme/js/main.js"></script>
           </body>
           </html>
           TEMPLATEEOF
@@ -182,24 +190,34 @@ jobs:
           TEMPLATEEOF
           sed -i 's/^          //' theme/templates/index.html
           
-          # Create CSS
+          # Create CSS with TOC and search styles
           cat > theme/static/css/style.css << 'CSSEOF'
-          :root { --bg: #fff; --fg: #333; --link: #0066cc; --border: #eee; --sidebar-bg: #f8f9fa; }
-          @media (prefers-color-scheme: dark) { :root { --bg: #1a1a1a; --fg: #e0e0e0; --link: #6db3f2; --border: #333; --sidebar-bg: #252525; } }
+          :root { --bg: #fff; --fg: #333; --link: #0066cc; --border: #eee; --sidebar-bg: #f8f9fa; --toc-bg: #fafafa; }
+          @media (prefers-color-scheme: dark) { :root { --bg: #1a1a1a; --fg: #e0e0e0; --link: #6db3f2; --border: #333; --sidebar-bg: #252525; --toc-bg: #1f1f1f; } }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: var(--fg); background: var(--bg); }
           .container { display: flex; min-height: calc(100vh - 60px); }
-          .sidebar { width: 280px; background: var(--sidebar-bg); padding: 1.5rem; border-right: 1px solid var(--border); position: fixed; height: calc(100vh - 60px); overflow-y: auto; }
-          .logo a { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--fg); margin-bottom: 1.5rem; }
+          .sidebar { width: 260px; background: var(--sidebar-bg); padding: 1.5rem; border-right: 1px solid var(--border); position: fixed; height: calc(100vh - 60px); overflow-y: auto; }
+          .logo a { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--fg); margin-bottom: 1rem; }
           .logo img { width: 32px; height: 32px; border-radius: 50%; }
-          .logo span { font-weight: 600; }
+          .logo span { font-weight: 600; font-size: 0.95rem; }
+          .search-box { margin-bottom: 1rem; }
+          .search-box input { width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--fg); font-size: 0.9rem; }
+          .search-box input:focus { outline: none; border-color: var(--link); }
           nav ul { list-style: none; }
-          nav li { margin: 0.5rem 0; }
-          nav a { color: var(--fg); text-decoration: none; padding: 0.25rem 0; display: block; }
+          nav li { margin: 0.3rem 0; }
+          nav a { color: var(--fg); text-decoration: none; padding: 0.2rem 0; display: block; font-size: 0.9rem; }
           nav a:hover, nav a.active { color: var(--link); }
-          .content { margin-left: 280px; flex: 1; max-width: 800px; padding: 2rem; }
+          .content { margin-left: 260px; margin-right: 200px; flex: 1; max-width: 800px; padding: 2rem; }
+          .toc { width: 200px; position: fixed; right: 0; top: 0; height: calc(100vh - 60px); padding: 1.5rem 1rem; overflow-y: auto; border-left: 1px solid var(--border); background: var(--toc-bg); }
+          .toc-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.75rem; color: var(--fg); opacity: 0.7; }
+          .toc nav a { display: block; font-size: 0.8rem; color: var(--fg); text-decoration: none; padding: 0.2rem 0; opacity: 0.8; }
+          .toc nav a:hover { color: var(--link); opacity: 1; }
+          .toc nav a.active { color: var(--link); opacity: 1; }
+          .toc nav .toc-h3 { padding-left: 0.75rem; }
           article h1 { margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
           article h2 { margin: 1.5rem 0 0.5rem; }
+          article h3 { margin: 1.2rem 0 0.4rem; }
           article p { margin: 0.5rem 0; }
           article a { color: var(--link); }
           article ul, article ol { margin: 0.5rem 0 0.5rem 1.5rem; }
@@ -209,9 +227,58 @@ jobs:
           footer { text-align: center; padding: 1rem; border-top: 1px solid var(--border); font-size: 0.9rem; color: var(--fg); height: 60px; }
           footer a { color: var(--link); text-decoration: none; }
           footer a:hover { text-decoration: underline; }
+          .hidden { display: none; }
+          @media (max-width: 1024px) { .toc { display: none; } .content { margin-right: 0; } }
           @media (max-width: 768px) { .sidebar { display: none; } .content { margin-left: 0; } }
           CSSEOF
           sed -i 's/^          //' theme/static/css/style.css
+          
+          # Create JavaScript for search and TOC
+          cat > theme/static/js/main.js << 'JSEOF'
+          document.addEventListener('DOMContentLoaded', function() {
+            // Search functionality
+            const searchInput = document.getElementById('search-input');
+            const navList = document.getElementById('nav-list');
+            if (searchInput && navList) {
+              const links = navList.querySelectorAll('a');
+              searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                links.forEach(link => {
+                  const text = link.textContent.toLowerCase();
+                  link.parentElement.classList.toggle('hidden', query && !text.includes(query));
+                });
+              });
+            }
+            
+            // TOC generation
+            const tocNav = document.getElementById('toc-nav');
+            const article = document.querySelector('article');
+            if (tocNav && article) {
+              const headings = article.querySelectorAll('h2, h3');
+              headings.forEach((h, i) => {
+                if (!h.id) h.id = 'heading-' + i;
+                const a = document.createElement('a');
+                a.href = '#' + h.id;
+                a.textContent = h.textContent;
+                a.className = 'toc-' + h.tagName.toLowerCase();
+                tocNav.appendChild(a);
+              });
+              
+              // Highlight current section
+              const tocLinks = tocNav.querySelectorAll('a');
+              window.addEventListener('scroll', function() {
+                let current = '';
+                headings.forEach(h => {
+                  if (window.scrollY >= h.offsetTop - 100) current = h.id;
+                });
+                tocLinks.forEach(a => {
+                  a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+                });
+              });
+            }
+          });
+          JSEOF
+          sed -i 's/^          //' theme/static/js/main.js
 
       - name: Copy user content
         run: |
