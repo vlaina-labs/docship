@@ -23,78 +23,91 @@ jobs:
   # 3. Add build-xxx to combine job's needs
 
   build-docsify:
+    name: docsify
     uses: ./.github/workflows/docsify.yml
     with:
       base_path_suffix: docsify
       deploy: false
 
   build-docute:
+    name: docute
     uses: ./.github/workflows/docute.yml
     with:
       base_path_suffix: docute
       deploy: false
 
   build-vitepress:
+    name: vitepress
     uses: ./.github/workflows/vitepress.yml
     with:
       base_path_suffix: vitepress
       deploy: false
 
   build-vuepress:
+    name: vuepress
     uses: ./.github/workflows/vuepress.yml
     with:
       base_path_suffix: vuepress
       deploy: false
 
   build-docusaurus:
+    name: docusaurus
     uses: ./.github/workflows/docusaurus.yml
     with:
       base_path_suffix: docusaurus
       deploy: false
 
   build-starlight:
+    name: starlight
     uses: ./.github/workflows/starlight.yml
     with:
       base_path_suffix: starlight
       deploy: false
 
   build-rspress:
+    name: rspress
     uses: ./.github/workflows/rspress.yml
     with:
       base_path_suffix: rspress
       deploy: false
 
   build-mkdocs-material:
+    name: mkdocs-material
     uses: ./.github/workflows/mkdocs-material.yml
     with:
       base_path_suffix: mkdocs-material
       deploy: false
 
   build-honkit:
+    name: honkit
     uses: ./.github/workflows/honkit.yml
     with:
       base_path_suffix: honkit
       deploy: false
 
   build-docfx:
+    name: docfx
     uses: ./.github/workflows/docfx.yml
     with:
       base_path_suffix: docfx
       deploy: false
 
   build-fumadocs:
+    name: fumadocs
     uses: ./.github/workflows/fumadocs.yml
     with:
       base_path_suffix: fumadocs
       deploy: false
 
   build-nextra:
+    name: nextra
     uses: ./.github/workflows/nextra.yml
     with:
       base_path_suffix: nextra
       deploy: false
 
   build-jekyll:
+    name: jekyll
     uses: ./.github/workflows/jekyll-just-the-docs.yml
     with:
       base_path_suffix: jekyll
