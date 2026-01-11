@@ -40,6 +40,7 @@ jobs:
 | mdBook | `mdbook.yml` | Rust-powered, lightweight |
 | MkDocs Material | `mkdocs-material.yml` | Python ecosystem, Material theme |
 | Nextra | `nextra.yml` | Next.js-powered |
+| Pelican | `pelican.yml` | Python ecosystem |
 | Rspress | `rspress.yml` | Rspack-powered |
 | Starlight | `starlight.yml` | Astro framework |
 | VitePress | `vitepress.yml` | Vue-powered, fast |

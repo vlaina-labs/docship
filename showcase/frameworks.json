@@ -32,6 +32,9 @@
   "nextra": {
     "links": ["https://github.com/shuding/nextra"]
   },
+  "pelican": {
+    "links": ["https://github.com/getpelican/pelican"]
+  },
   "rspress": {
     "links": ["https://github.com/web-infra-dev/rspress"]
   },

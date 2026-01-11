@@ -127,6 +127,13 @@ jobs:
       base_path_suffix: eleventy
       deploy: false
 
+  build-pelican:
+    name: pelican
+    uses: ./.github/workflows/pelican.yml
+    with:
+      base_path_suffix: pelican
+      deploy: false
+
   # Combine all build artifacts and create showcase page
   combine:
     if: always()
@@ -146,6 +153,7 @@ jobs:
       - build-jekyll
       - build-mdbook
       - build-eleventy
+      - build-pelican
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -178,6 +186,7 @@ jobs:
           BUILD_JEKYLL: ${{ needs.build-jekyll.result }}
           BUILD_MDBOOK: ${{ needs.build-mdbook.result }}
           BUILD_ELEVENTY: ${{ needs.build-eleventy.result }}
+          BUILD_PELICAN: ${{ needs.build-pelican.result }}
         run: |
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
@@ -201,6 +210,7 @@ jobs:
           RESULTS[mdbook]="$BUILD_MDBOOK"
           RESULTS[mkdocs-material]="$BUILD_MKDOCS"
           RESULTS[nextra]="$BUILD_NEXTRA"
+          RESULTS[pelican]="$BUILD_PELICAN"
           RESULTS[rspress]="$BUILD_RSPRESS"
           RESULTS[starlight]="$BUILD_STARLIGHT"
           RESULTS[vitepress]="$BUILD_VITEPRESS"
