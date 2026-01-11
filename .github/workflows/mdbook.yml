@@ -69,18 +69,18 @@ jobs:
           mkdir -p src
           
           # Create book.toml
-          cat > book.toml << CONFIGEOF
-          [book]
-          title = "${OWNER}/${REPO_NAME}"
-          authors = ["${OWNER}"]
-          language = "en"
-          
-          [output.html]
-          site-url = "${BASE_PATH}"
-          git-repository-url = "${GITHUB_URL}"
-          default-theme = "light"
-          preferred-dark-theme = "navy"
-          CONFIGEOF
+          cat > book.toml << EOF
+[book]
+title = "${OWNER}/${REPO_NAME}"
+authors = ["${OWNER}"]
+language = "en"
+
+[output.html]
+site-url = "${BASE_PATH}"
+git-repository-url = "${GITHUB_URL}"
+default-theme = "light"
+preferred-dark-theme = "navy"
+EOF
 
       - name: Copy user content
         run: |
@@ -115,12 +115,12 @@ jobs:
       - name: Generate SUMMARY.md
         run: |
           # Generate SUMMARY.md from directory structure
-          cat > src/SUMMARY.md << 'SUMMARYEOF'
-          # Summary
-          
-          [Introduction](README.md)
-          
-          SUMMARYEOF
+          cat > src/SUMMARY.md << 'EOF'
+# Summary
+
+[Introduction](README.md)
+
+EOF
           
           # Add root level markdown files
           for f in $(find src -maxdepth 1 -name "*.md" ! -name "README.md" ! -name "SUMMARY.md" -type f | sort); do
@@ -169,33 +169,33 @@ jobs:
             rm -f theme/index.hbs
             
             # Create head.hbs for favicon
-            cat > theme/head.hbs << HEADEOF
-          <link rel="icon" href="${AVATAR_URL}">
-          <style>
-            .menu-title::before {
-              content: '';
-              display: inline-block;
-              width: 24px;
-              height: 24px;
-              background-image: url('${AVATAR_URL}');
-              background-size: cover;
-              border-radius: 50%;
-              margin-right: 8px;
-              vertical-align: middle;
-            }
-            footer {
-              text-align: center;
-              padding: 1rem;
-              font-size: 0.9rem;
-              color: var(--fg);
-              border-top: 1px solid var(--quote-border);
-              margin-top: 2rem;
-            }
-            footer a {
-              color: var(--links);
-            }
-          </style>
-          HEADEOF
+            cat > theme/head.hbs << EOF
+<link rel="icon" href="${AVATAR_URL}">
+<style>
+  .menu-title::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background-image: url('${AVATAR_URL}');
+    background-size: cover;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  footer {
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+    color: var(--fg);
+    border-top: 1px solid var(--quote-border);
+    margin-top: 2rem;
+  }
+  footer a {
+    color: var(--links);
+  }
+</style>
+EOF
           else
             # Modify index.hbs to add favicon and footer
             # Add favicon in head
