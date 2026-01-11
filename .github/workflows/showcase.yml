@@ -120,6 +120,13 @@ jobs:
       base_path_suffix: mdbook
       deploy: false
 
+  build-eleventy:
+    name: eleventy
+    uses: ./.github/workflows/eleventy.yml
+    with:
+      base_path_suffix: eleventy
+      deploy: false
+
   # Combine all build artifacts and create showcase page
   combine:
     if: always()
@@ -138,6 +145,7 @@ jobs:
       - build-nextra
       - build-jekyll
       - build-mdbook
+      - build-eleventy
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -169,6 +177,7 @@ jobs:
           BUILD_NEXTRA: ${{ needs.build-nextra.result }}
           BUILD_JEKYLL: ${{ needs.build-jekyll.result }}
           BUILD_MDBOOK: ${{ needs.build-mdbook.result }}
+          BUILD_ELEVENTY: ${{ needs.build-eleventy.result }}
         run: |
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
@@ -185,6 +194,7 @@ jobs:
           RESULTS[docusaurus]="$BUILD_DOCUSAURUS"
           RESULTS[docute]="$BUILD_DOCUTE"
           RESULTS[docfx]="$BUILD_DOCFX"
+          RESULTS[eleventy]="$BUILD_ELEVENTY"
           RESULTS[fumadocs]="$BUILD_FUMADOCS"
           RESULTS[honkit]="$BUILD_HONKIT"
           RESULTS[jekyll]="$BUILD_JEKYLL"

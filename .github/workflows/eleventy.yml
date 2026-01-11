@@ -1,0 +1,329 @@
+name: Deploy Eleventy to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-eleventy"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-eleventy
+          restore-keys: |
+            ${{ runner.os }}-eleventy
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|_site/|node_modules/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Format markdown content
+        run: |
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh /tmp/user-content
+
+      - name: Setup Eleventy project
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
+          
+          mkdir -p src/_includes src/_data
+          
+          # Create package.json
+          printf '%s\n' '{' '  "name": "eleventy-docs",' '  "private": true,' '  "scripts": {' '    "build": "eleventy"' '  },' '  "devDependencies": {' '    "@11ty/eleventy": "^3.0.0"' '  }' '}' > package.json
+          
+          # Create eleventy.config.js
+          cat > eleventy.config.js << 'CONFIGEOF'
+          export default function(eleventyConfig) {
+            eleventyConfig.addPassthroughCopy("src/assets");
+            
+            return {
+              dir: {
+                input: "src",
+                output: "_site",
+                includes: "_includes",
+                data: "_data"
+              },
+              pathPrefix: "PATH_PREFIX_PLACEHOLDER",
+              markdownTemplateEngine: "njk",
+              htmlTemplateEngine: "njk"
+            };
+          };
+          CONFIGEOF
+          sed -i "s|PATH_PREFIX_PLACEHOLDER|${BASE_PATH}/|g" eleventy.config.js
+          
+          # Create site data
+          printf '%s\n' '{' "  \"title\": \"${OWNER}/${REPO_NAME}\"," "  \"url\": \"https://${OWNER}.github.io${BASE_PATH}\"," "  \"github\": \"${GITHUB_URL}\"," "  \"avatar\": \"${AVATAR_URL}\"" '}' > src/_data/site.json
+          
+          # Create base layout
+          cat > src/_includes/base.njk << 'LAYOUTEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{{ title }} | {{ site.title }}</title>
+            <link rel="icon" href="{{ site.avatar }}">
+            <style>
+              :root {
+                --bg: #fff;
+                --fg: #333;
+                --link: #0066cc;
+                --border: #eee;
+                --sidebar-bg: #f5f5f5;
+              }
+              @media (prefers-color-scheme: dark) {
+                :root {
+                  --bg: #1a1a1a;
+                  --fg: #e0e0e0;
+                  --link: #6db3f2;
+                  --border: #333;
+                  --sidebar-bg: #252525;
+                }
+              }
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                line-height: 1.6;
+                color: var(--fg);
+                background: var(--bg);
+                display: flex;
+                min-height: 100vh;
+              }
+              .sidebar {
+                width: 280px;
+                background: var(--sidebar-bg);
+                padding: 1.5rem;
+                border-right: 1px solid var(--border);
+                position: fixed;
+                height: 100vh;
+                overflow-y: auto;
+              }
+              .logo {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin-bottom: 1.5rem;
+                text-decoration: none;
+                color: var(--fg);
+              }
+              .logo img {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+              }
+              .logo span { font-weight: 600; }
+              nav ul { list-style: none; }
+              nav li { margin: 0.5rem 0; }
+              nav a {
+                color: var(--fg);
+                text-decoration: none;
+                padding: 0.25rem 0;
+                display: block;
+              }
+              nav a:hover { color: var(--link); }
+              nav a.active { color: var(--link); font-weight: 600; }
+              .main {
+                margin-left: 280px;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+              }
+              .content {
+                flex: 1;
+                max-width: 800px;
+                padding: 2rem;
+              }
+              .content h1 { margin-bottom: 1rem; }
+              .content h2 { margin: 1.5rem 0 0.5rem; }
+              .content p { margin: 0.5rem 0; }
+              .content a { color: var(--link); }
+              .content pre {
+                background: var(--sidebar-bg);
+                padding: 1rem;
+                border-radius: 4px;
+                overflow-x: auto;
+              }
+              .content code {
+                background: var(--sidebar-bg);
+                padding: 0.2rem 0.4rem;
+                border-radius: 3px;
+              }
+              .content pre code { background: none; padding: 0; }
+              footer {
+                text-align: center;
+                padding: 1.5rem;
+                border-top: 1px solid var(--border);
+                font-size: 0.9rem;
+                color: var(--fg);
+              }
+              footer a { color: var(--link); text-decoration: none; }
+              footer a:hover { text-decoration: underline; }
+              @media (max-width: 768px) {
+                .sidebar { display: none; }
+                .main { margin-left: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            <aside class="sidebar">
+              <a href="{{ '/' | url }}" class="logo">
+                <img src="{{ site.avatar }}" alt="Logo">
+                <span>{{ site.title }}</span>
+              </a>
+              <nav>
+                <ul>
+                  {%- for item in collections.all | sort(false, false, 'data.order') %}
+                  {%- if item.data.title and item.url != '/' %}
+                  <li><a href="{{ item.url | url }}"{% if item.url == page.url %} class="active"{% endif %}>{{ item.data.title }}</a></li>
+                  {%- endif %}
+                  {%- endfor %}
+                </ul>
+              </nav>
+            </aside>
+            <div class="main">
+              <main class="content">
+                {{ content | safe }}
+              </main>
+              <footer>
+                Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/11ty/eleventy" target="_blank">Eleventy</a>
+              </footer>
+            </div>
+          </body>
+          </html>
+          LAYOUTEOF
+
+      - name: Copy user content
+        run: |
+          # Copy markdown files to src/
+          find /tmp/user-content -maxdepth 1 -type f -name "*.md" -exec cp {} src/ \; 2>/dev/null || true
+          
+          # Copy directories to src/
+          for dir in /tmp/user-content/*/; do
+            if [ -d "$dir" ]; then
+              dirname=$(basename "$dir")
+              case "$dirname" in
+                _site|_includes|_data|node_modules) ;;
+                *) cp -r "$dir" "src/" 2>/dev/null || true ;;
+              esac
+            fi
+          done
+          
+          # Create index.md if not exists
+          if [ -f "src/index.md" ]; then
+            : # keep it
+          elif [ -f "src/README.md" ]; then
+            mv src/README.md src/index.md
+          else
+            FIRST_DOC=$(find src -maxdepth 1 -name "*.md" -type f | sort | head -1)
+            if [ -n "$FIRST_DOC" ]; then
+              cp "$FIRST_DOC" src/index.md
+            else
+              printf '%s\n' '---' 'title: Welcome' 'layout: base.njk' 'order: 0' '---' '' '# Welcome' '' 'Add markdown files to get started.' > src/index.md
+            fi
+          fi
+
+      - name: Add frontmatter to markdown files
+        run: |
+          ORDER=1
+          for f in $(find src -maxdepth 1 -name "*.md" -type f | sort); do
+            if ! head -1 "$f" | grep -q "^---"; then
+              filename=$(basename "$f" .md)
+              if [ "$filename" = "index" ]; then
+                title="Home"
+                order=0
+              else
+                title=$(echo "$filename" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                order=$ORDER
+                ORDER=$((ORDER + 1))
+              fi
+              TMPFILE=$(mktemp)
+              printf '%s\n' '---' "title: ${title}" 'layout: base.njk' "order: ${order}" '---' '' > "$TMPFILE"
+              cat "$f" >> "$TMPFILE"
+              mv "$TMPFILE" "$f"
+            else
+              # Ensure layout is set
+              if ! grep -q "^layout:" "$f"; then
+                sed -i '/^---$/,/^---$/{/^---$/!{/^---$/!s/^---$/layout: base.njk\n---/}}' "$f"
+              fi
+            fi
+          done
+
+      - name: Install and Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-eleventy
+          path: _site/
+          retention-days: 1
+
+  deploy:
+    if: ${{ inputs.deploy != false }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

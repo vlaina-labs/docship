@@ -275,6 +275,24 @@ Before releasing a theme, test with:
 - [ ] Supports MathJax via `mathjax-support = true`
 - [ ] Built-in search functionality (no additional config needed)
 
+## Eleventy Configuration
+
+- [ ] Eleventy (11ty) is a JavaScript-based static site generator
+- [ ] Install via `npm install @11ty/eleventy`
+- [ ] Config file is `eleventy.config.js` or `.eleventy.js`
+- [ ] Default input directory is `.` (project root)
+- [ ] Default output directory is `_site`
+- [ ] Supports multiple template languages: Liquid, Nunjucks, Markdown, HTML, JavaScript
+- [ ] Use `dir.input` and `dir.output` in config to customize directories
+- [ ] Use `pathPrefix` for GitHub Pages subdirectory deployment
+- [ ] Layouts go in `_includes/` directory by default
+- [ ] Data files go in `_data/` directory (JSON, JS, or YAML)
+- [ ] Use frontmatter `layout` to specify template layout
+- [ ] Collections are auto-generated from tags or can be custom defined
+- [ ] Use `eleventyConfig.addPassthroughCopy()` for static assets
+- [ ] Markdown files need frontmatter with `layout` to use templates
+- [ ] No built-in theme - requires custom CSS/layout
+
 ## General Lessons Learned
 
 ### Framework Categories
@@ -337,6 +355,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | MkDocs Material | `https://github.com/squidfunk/mkdocs-material` |
 | VuePress | `https://github.com/vuejs/vuepress` |
 | mdBook | `https://github.com/rust-lang/mdBook` |
+| Eleventy | `https://github.com/11ty/eleventy` |
 
 ### Logo Implementation Patterns
 
@@ -410,6 +429,7 @@ Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
 | Nextra | `footer` prop in Layout component |
 | VuePress | enhanceApp.js DOM injection |
 | mdBook | Custom theme/index.hbs or theme/head.hbs |
+| Eleventy | Custom layout template with footer |
 | Jekyll | `footer_content` in _config.yml |
 
 ### 3. Update Showcase

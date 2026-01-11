@@ -11,6 +11,9 @@
   "docfx": {
     "links": ["https://github.com/dotnet/docfx"]
   },
+  "eleventy": {
+    "links": ["https://github.com/11ty/eleventy"]
+  },
   "fumadocs": {
     "links": ["https://github.com/fuma-nama/fumadocs"]
   },

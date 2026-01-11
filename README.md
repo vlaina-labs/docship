@@ -33,6 +33,7 @@ jobs:
 | Docusaurus | `docusaurus.yml` | React-powered, feature-rich |
 | Docute | `docute.yml` | Pure frontend, Vue-based |
 | DocFX | `docfx.yml` | .NET ecosystem |
+| Eleventy | `eleventy.yml` | JavaScript, flexible templating |
 | Fumadocs | `fumadocs.yml` | Next.js-powered |
 | HonKit | `honkit.yml` | GitBook fork |
 | Jekyll | `jekyll-just-the-docs.yml` | Ruby ecosystem, Just the Docs theme |
