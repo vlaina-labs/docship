@@ -160,7 +160,7 @@ jobs:
           </script>
           
           <template>
-            <div class="flex items-center gap-2">
+            <NuxtLink to="/docs" class="flex items-center gap-2">
               <UColorModeImage
                 v-if="appConfig.header?.logo?.dark || appConfig.header?.logo?.light"
                 :light="appConfig.header?.logo?.light || appConfig.header?.logo?.dark"
@@ -169,7 +169,7 @@ jobs:
                 class="h-6 w-6 shrink-0 rounded-full"
               />
               <span class="font-medium">{{ appConfig.header?.title }}</span>
-            </div>
+            </NuxtLink>
           </template>
           HEADEREOF
           
