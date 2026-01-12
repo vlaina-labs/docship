@@ -411,7 +411,6 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | Eleventy | `https://github.com/11ty/eleventy` |
 | Sphinx | `https://github.com/sphinx-doc/sphinx` |
 | Docus | `https://github.com/nuxt-content/docus` |
-| Saber | `https://github.com/saberland/saber` |
 
 ### Logo Implementation Patterns
 
@@ -426,7 +425,6 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | VuePress | `themeConfig.logo` (external URL supported) |
 | Starlight | `logo.src` + `title` |
 | Docus | Custom `AppHeaderLogo.vue` with `<NuxtLink>` + `<UColorModeImage>` + `<span>` |
-| Saber | Custom theme layout with `<img>` + `<span>` in header |
 
 ### Sidebar Generation
 
@@ -490,7 +488,6 @@ Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
 | Eleventy | Custom layout template with footer |
 | Sphinx | Custom CSS in _static/custom.css |
 | Docus | `footer.credits` in app.config.ts |
-| Saber | Custom theme layout with footer HTML |
 | Jekyll | `footer_content` in _config.yml |
 
 ### 3. Update Showcase
