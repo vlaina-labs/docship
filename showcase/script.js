@@ -14,6 +14,9 @@ function toggleTheme() {
   const isDark = document.body.classList.toggle('dark');
   updateThemeIcon(isDark);
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  
+  // Update all iframes theme
+  updateIframesTheme(isDark);
 }
 
 // Update theme button icon
@@ -40,6 +43,50 @@ function updateThemeIcon(isDark) {
   }
 }
 
+// Update iframes theme by manipulating their content
+function updateIframesTheme(isDark) {
+  const theme = isDark ? 'dark' : 'light';
+  
+  document.querySelectorAll('.iframe-wrap iframe').forEach(iframe => {
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      const iframeWin = iframe.contentWindow;
+      
+      // Try to set theme via various methods used by different frameworks
+      
+      // 1. HTML attribute (VitePress, Docusaurus, Starlight, etc.)
+      iframeDoc.documentElement.setAttribute('data-theme', theme);
+      iframeDoc.documentElement.setAttribute('data-color-mode', theme);
+      iframeDoc.documentElement.classList.remove('light', 'dark');
+      iframeDoc.documentElement.classList.add(theme);
+      
+      // 2. Body class (some frameworks)
+      iframeDoc.body.classList.remove('light', 'dark');
+      iframeDoc.body.classList.add(theme);
+      
+      // 3. localStorage (Docusaurus, VitePress, Nextra, Fumadocs, etc.)
+      iframeWin.localStorage.setItem('theme', theme);
+      iframeWin.localStorage.setItem('color-theme', theme);
+      iframeWin.localStorage.setItem('vitepress-theme-appearance', theme);
+      iframeWin.localStorage.setItem('docusaurus.theme.mode', theme);
+      iframeWin.localStorage.setItem('nextra-theme', theme);
+      iframeWin.localStorage.setItem('starlight-theme', theme);
+      
+      // 4. Nuxt color mode (Docus)
+      iframeWin.localStorage.setItem('nuxt-color-mode', theme);
+      
+      // 5. MkDocs Material
+      iframeDoc.body.setAttribute('data-md-color-scheme', theme === 'dark' ? 'slate' : 'default');
+      
+      // 6. Rspress
+      iframeWin.localStorage.setItem('rspress-theme', theme);
+      
+    } catch (e) {
+      // Cross-origin iframe, can't access - this is expected for some iframes
+    }
+  });
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
   // Restore device mode
@@ -53,4 +100,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.add('dark');
   }
   updateThemeIcon(isDark);
+  
+  // Wait for iframes to load, then apply theme
+  setTimeout(() => {
+    updateIframesTheme(isDark);
+  }, 2000);
 });
+
+// Also update iframes when they finish loading
+document.addEventListener('load', (e) => {
+  if (e.target.tagName === 'IFRAME') {
+    const isDark = document.body.classList.contains('dark');
+    setTimeout(() => updateIframesTheme(isDark), 500);
+  }
+}, true);
