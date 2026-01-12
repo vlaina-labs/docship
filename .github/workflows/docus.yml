@@ -93,6 +93,11 @@ jobs:
             extends: ['docus'],
             app: {
               baseURL: '${BASE_PATH}',
+              head: {
+                link: [
+                  { rel: 'icon', type: 'image/png', href: '${AVATAR_URL}' }
+                ]
+              }
             },
             site: {
               name: '${OWNER}/${REPO_NAME}',
@@ -122,6 +127,9 @@ jobs:
                 dark: '${AVATAR_URL}',
                 alt: '${OWNER}',
               },
+            },
+            seo: {
+              title: '${OWNER}/${REPO_NAME}',
             },
             socials: {
               github: '${GITHUB_URL}',
