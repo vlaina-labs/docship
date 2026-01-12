@@ -108,7 +108,7 @@ jobs:
           # Create custom footer partial for attribution
           cat > layouts/partials/docs/inject/footer.html << 'FOOTEREOF'
           <div style="text-align: center; padding: 20px 0; font-size: 14px; color: var(--gray-500);">
-            Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/gohugoio/hugo" target="_blank">Hugo</a> + <a href="https://github.com/alex-shpak/hugo-book" target="_blank">Book</a>
+            Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/alex-shpak/hugo-book" target="_blank">hugo-book</a>
           </div>
           FOOTEREOF
 
@@ -190,17 +190,21 @@ jobs:
             printf '%s\n' '---' 'title: Introduction' 'weight: 1' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > "content/docs/_index.md"
           fi
           
-          # Create site root index
-          cat > content/_index.md << INDEXEOF
-          ---
-          title: ""
-          type: docs
-          ---
-          
-          # ${OWNER}/${REPO_NAME}
-          
-          Welcome to the documentation.
-          INDEXEOF
+          # Create redirect from root to docs
+          mkdir -p layouts
+          cat > layouts/index.html << 'REDIRECTEOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta http-equiv="refresh" content="0; url={{ "docs/" | relURL }}">
+            <script>window.location.href = '{{ "docs/" | relURL }}';</script>
+          </head>
+          <body>
+            <p>Redirecting to documentation...</p>
+          </body>
+          </html>
+          REDIRECTEOF
 
       - name: Build Hugo site
         run: hugo --minify
