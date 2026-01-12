@@ -4,31 +4,48 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Documentation Showcase</title>
-  <link rel="icon" href="https://github.com/vladelaina.png">
+  <link rel="icon" href="https://github.com/NekoTick.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="toolbar">
-    <span>Preview:</span>
-    <button class="toggle-btn active" data-mode="desktop" onclick="setMode('desktop')">🖥 Desktop</button>
-    <button class="toggle-btn" data-mode="mobile" onclick="setMode('mobile')">📱 Mobile</button>
+    <div class="toggle-group">
+      <button class="toggle-btn device-btn active" data-mode="desktop" onclick="setMode('desktop')" title="Desktop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+      </button>
+      <button class="toggle-btn device-btn" data-mode="mobile" onclick="setMode('mobile')" title="Mobile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+          <line x1="12" y1="18" x2="12.01" y2="18"></line>
+        </svg>
+      </button>
+      <button class="toggle-btn theme-btn" onclick="toggleTheme()" title="Toggle theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+    </div>
   </div>
   <div class="grid">
     <div class="card">
-      <div class="hdr"><h3>docsify</h3><a href="#" target="_blank">↗</a></div>
-      <div class="iframe-wrap desktop"><iframe src="https://example.com" loading="lazy"></iframe></div>
+      <div class="hdr"><h3><a href="https://github.com/docsifyjs/docsify" target="_blank">docsify</a></h3><a href="docsify/" target="_blank">Open</a></div>
+      <div class="iframe-wrap desktop"><iframe src="docsify/" loading="lazy"></iframe></div>
     </div>
     <div class="card">
-      <div class="hdr"><h3>jekyll</h3><a href="#" target="_blank">↗</a></div>
-      <div class="iframe-wrap desktop"><iframe src="https://example.com" loading="lazy"></iframe></div>
-    </div>
-    <div class="card">
-      <div class="hdr"><h3>vitepress</h3><a href="#" target="_blank">↗</a></div>
-      <div class="iframe-wrap desktop"><iframe src="https://example.com" loading="lazy"></iframe></div>
-    </div>
-    <div class="card">
-      <div class="hdr"><h3>docusaurus</h3><a href="#" target="_blank">↗</a></div>
-      <div class="iframe-wrap desktop"><iframe src="https://example.com" loading="lazy"></iframe></div>
+      <div class="hdr"><h3><a href="https://github.com/facebook/docusaurus" target="_blank">docusaurus</a></h3><a href="docusaurus/" target="_blank">Open</a></div>
+      <div class="iframe-wrap desktop"><iframe src="docusaurus/" loading="lazy"></iframe></div>
     </div>
   </div>
   <div class="ft">

@@ -9,6 +9,12 @@ body {
   background: #f6f6f6;
   color: #333;
   min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.dark {
+  background: #1a1a2e;
+  color: #e0e0e0;
 }
 
 .toolbar {
@@ -20,33 +26,64 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   border-bottom: 1px solid #e0e0e0;
+  transition: background 0.3s, border-color 0.3s;
 }
 
-.toolbar span {
-  color: #666;
-  font-size: 0.9rem;
+body.dark .toolbar {
+  background: #16213e;
+  border-bottom-color: #2a2a4a;
+}
+
+.toggle-group {
+  display: flex;
+  background: #e0e0e0;
+  border-radius: 10px;
+  padding: 4px;
+  gap: 2px;
+  transition: background 0.3s;
+}
+
+body.dark .toggle-group {
+  background: #2a2a4a;
 }
 
 .toggle-btn {
-  background: #e8e8e8;
+  background: transparent;
   border: none;
-  color: #333;
-  padding: 8px 16px;
-  border-radius: 6px;
+  color: #666;
+  width: 44px;
+  height: 36px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body.dark .toggle-btn {
+  color: #888;
 }
 
 .toggle-btn:hover {
-  background: #ddd;
+  background: rgba(0,0,0,0.05);
+}
+
+body.dark .toggle-btn:hover {
+  background: rgba(255,255,255,0.1);
 }
 
 .toggle-btn.active {
-  background: #667eea;
+  background: #3b82f6;
   color: #fff;
+}
+
+.toggle-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .grid {
@@ -75,6 +112,12 @@ body {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+body.dark .card {
+  background: #16213e;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .card-error {
@@ -83,6 +126,10 @@ body {
 
 .card-error .hdr {
   background: #fdf2f2;
+}
+
+body.dark .card-error .hdr {
+  background: #3d1f1f;
 }
 
 .card-error .status {
@@ -97,26 +144,37 @@ body {
   padding: 12px 16px;
   background: #fafafa;
   border-bottom: 1px solid #eee;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+body.dark .hdr {
+  background: #1a1a2e;
+  border-bottom-color: #2a2a4a;
 }
 
 .hdr h3 {
   flex: 1;
   font-size: 1.1rem;
   color: #333;
+  transition: color 0.3s;
+}
+
+body.dark .hdr h3 {
+  color: #e0e0e0;
 }
 
 .hdr h3 a {
-  color: #333;
+  color: inherit;
   text-decoration: none;
 }
 
 .hdr h3 a:hover {
-  color: #667eea;
+  color: #3b82f6;
   text-decoration: underline;
 }
 
 .hdr > a {
-  color: #667eea;
+  color: #3b82f6;
   text-decoration: none;
   font-size: 0.9rem;
 }
@@ -128,6 +186,11 @@ body {
   background: #e8e8e8;
   padding: 10px;
   min-height: 470px;
+  transition: background 0.3s;
+}
+
+body.dark .iframe-wrap {
+  background: #0f0f1a;
 }
 
 .iframe-wrap iframe {
@@ -154,13 +217,22 @@ body {
   font-size: 0.95rem;
 }
 
+body.dark .error-msg {
+  color: #888;
+}
+
 .ft {
   text-align: center;
   padding: 30px;
   color: #666;
+  transition: color 0.3s;
+}
+
+body.dark .ft {
+  color: #888;
 }
 
 .ft a {
-  color: #667eea;
+  color: #3b82f6;
   text-decoration: none;
 }
