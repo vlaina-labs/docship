@@ -52,34 +52,92 @@ function updateIframesTheme(isDark) {
       const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
       const iframeWin = iframe.contentWindow;
       
-      // Try to set theme via various methods used by different frameworks
-      
-      // 1. HTML attribute (VitePress, Docusaurus, Starlight, etc.)
+      // === Common attributes ===
+      // HTML element attributes
       iframeDoc.documentElement.setAttribute('data-theme', theme);
       iframeDoc.documentElement.setAttribute('data-color-mode', theme);
-      iframeDoc.documentElement.classList.remove('light', 'dark');
-      iframeDoc.documentElement.classList.add(theme);
+      iframeDoc.documentElement.setAttribute('class', 
+        iframeDoc.documentElement.className.replace(/\b(light|dark)\b/g, '') + ' ' + theme);
       
-      // 2. Body class (some frameworks)
-      iframeDoc.body.classList.remove('light', 'dark');
-      iframeDoc.body.classList.add(theme);
+      // Body attributes
+      iframeDoc.body.setAttribute('data-theme', theme);
+      iframeDoc.body.className = iframeDoc.body.className.replace(/\b(light|dark)\b/g, '').trim() + ' ' + theme;
       
-      // 3. localStorage (Docusaurus, VitePress, Nextra, Fumadocs, etc.)
+      // === Framework-specific localStorage keys ===
       iframeWin.localStorage.setItem('theme', theme);
       iframeWin.localStorage.setItem('color-theme', theme);
+      
+      // VitePress
       iframeWin.localStorage.setItem('vitepress-theme-appearance', theme);
+      
+      // Docusaurus
       iframeWin.localStorage.setItem('docusaurus.theme.mode', theme);
+      
+      // Nextra
       iframeWin.localStorage.setItem('nextra-theme', theme);
+      
+      // Starlight
       iframeWin.localStorage.setItem('starlight-theme', theme);
       
-      // 4. Nuxt color mode (Docus)
+      // Docus (Nuxt)
       iframeWin.localStorage.setItem('nuxt-color-mode', theme);
       
-      // 5. MkDocs Material
-      iframeDoc.body.setAttribute('data-md-color-scheme', theme === 'dark' ? 'slate' : 'default');
-      
-      // 6. Rspress
+      // Rspress
       iframeWin.localStorage.setItem('rspress-theme', theme);
+      
+      // Fumadocs
+      iframeWin.localStorage.setItem('fd-theme', theme);
+      
+      // === Docute ===
+      // Docute uses Vue store and specific localStorage
+      iframeWin.localStorage.setItem('docute:dark', isDark ? 'true' : 'false');
+      // Try to access Docute's Vue instance
+      if (iframeWin.__DOCUTE_INSTANCE__) {
+        iframeWin.__DOCUTE_INSTANCE__.$store.commit('SET_DARK', isDark);
+      }
+      // Also try the global docute object
+      if (iframeWin.docute && iframeWin.docute.store) {
+        iframeWin.docute.store.commit('SET_DARK', isDark);
+      }
+      
+      // === Sphinx Furo ===
+      // Furo uses data-theme on html element and localStorage
+      iframeDoc.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      iframeWin.localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      // Furo also checks body attribute
+      iframeDoc.body.dataset.theme = isDark ? 'dark' : 'light';
+      
+      // === MkDocs Material ===
+      iframeDoc.body.setAttribute('data-md-color-scheme', isDark ? 'slate' : 'default');
+      iframeWin.localStorage.setItem('data-md-color-scheme', isDark ? 'slate' : 'default');
+      // Material also uses __palette
+      try {
+        const palette = { scheme: isDark ? 'slate' : 'default' };
+        iframeWin.localStorage.setItem('__palette', JSON.stringify(palette));
+      } catch (e) {}
+      
+      // === Hugo Book ===
+      iframeWin.localStorage.setItem('book-theme', theme);
+      
+      // === mdBook ===
+      iframeWin.localStorage.setItem('mdbook-theme', isDark ? 'navy' : 'light');
+      // mdBook uses class on html
+      iframeDoc.documentElement.className = isDark ? 'navy' : 'light';
+      
+      // === Docsify ===
+      iframeWin.localStorage.setItem('docsify-dark-mode', isDark ? 'dark' : 'light');
+      
+      // === HonKit / GitBook ===
+      iframeWin.localStorage.setItem('gitbook-theme', theme);
+      
+      // === Eleventy (11ty) ===
+      iframeWin.localStorage.setItem('color-scheme', theme);
+      
+      // === DocFX ===
+      iframeWin.localStorage.setItem('docfx-theme', theme);
+      
+      // === Jekyll Just the Docs ===
+      iframeWin.localStorage.setItem('jtd-theme', theme);
       
     } catch (e) {
       // Cross-origin iframe, can't access - this is expected for some iframes
