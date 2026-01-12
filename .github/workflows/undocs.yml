@@ -35,18 +35,13 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Cache pnpm
+      - name: Cache npm
         uses: actions/cache@v4
         with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-undocs-pnpm
+          path: ~/.npm
+          key: ${{ runner.os }}-undocs-npm
           restore-keys: |
-            ${{ runner.os }}-undocs-pnpm
+            ${{ runner.os }}-undocs-npm
 
       - name: Backup user content
         run: |
@@ -76,18 +71,13 @@ jobs:
           BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
           SITE_URL="https://${OWNER}.github.io${BASE_PATH}"
           
-          # Create package.json with pinned versions
+          # Create package.json - use older stable version
           cat > package.json << 'EOF'
           {
             "private": true,
             "name": "docs",
             "scripts": {
-              "dev": "undocs dev .",
-              "build": "undocs build ."
-            },
-            "devDependencies": {
-              "undocs": "^0.4.0",
-              "nuxi": "^3.21.0"
+              "build": "npx undocs@0.3.0 build ."
             }
           }
           EOF
@@ -125,7 +115,6 @@ jobs:
             if [ -f "$f" ]; then
               basename_noext=$(basename "$f" .md)
               
-              # Determine target filename with order prefix
               if [ "$basename_noext" = "index" ]; then
                 target="1.guide/1.index.md"
               else
@@ -133,7 +122,6 @@ jobs:
                 target="1.guide/${NAV_ORDER}.${basename_noext}.md"
               fi
               
-              # Add frontmatter if not present
               if ! head -1 "$f" | grep -q "^---"; then
                 title=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
                 if [ "$basename_noext" = "index" ]; then
@@ -147,7 +135,7 @@ jobs:
             fi
           done
           
-          # Copy directories as sub-sections
+          # Copy directories
           DIR_ORDER=10
           for dir in /tmp/user-content/*/; do
             if [ -d "$dir" ]; then
@@ -156,8 +144,6 @@ jobs:
                 node_modules|.output|.nuxt|.docs|.config) ;;
                 *)
                   mkdir -p "${DIR_ORDER}.${dirname}"
-                  
-                  # Copy and process markdown files in directory
                   SUB_ORDER=1
                   for f in "$dir"*.md; do
                     if [ -f "$f" ]; then
@@ -165,7 +151,6 @@ jobs:
                       target="${DIR_ORDER}.${dirname}/${SUB_ORDER}.${basename_noext}.md"
                       SUB_ORDER=$((SUB_ORDER + 1))
                       
-                      # Add frontmatter if not present
                       if ! head -1 "$f" | grep -q "^---"; then
                         ftitle=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
                         printf '%s\n' '---' "title: ${ftitle}" '---' '' > "$target"
@@ -175,7 +160,6 @@ jobs:
                       fi
                     fi
                   done
-                  
                   DIR_ORDER=$((DIR_ORDER + 1))
                   ;;
               esac
@@ -187,23 +171,8 @@ jobs:
             printf '%s\n' '---' 'title: Introduction' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > "1.guide/1.index.md"
           fi
 
-      - name: Install dependencies
-        run: |
-          pnpm install
-          # Approve build scripts for native modules
-          echo "y" | pnpm approve-builds 2>/dev/null || true
-
       - name: Build Undocs site
-        env:
-          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
-        run: |
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
-          
-          # Set base URL for Nuxt
-          export NUXT_APP_BASE_URL="${BASE_PATH}"
-          
-          pnpm run build
+        run: npm run build
 
       - name: Create custom footer
         run: |
