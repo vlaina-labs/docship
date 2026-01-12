@@ -76,7 +76,7 @@ jobs:
           BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}"
           SITE_URL="https://${OWNER}.github.io${BASE_PATH}"
           
-          # Create package.json
+          # Create package.json with pinned versions
           cat > package.json << 'EOF'
           {
             "private": true,
@@ -86,7 +86,8 @@ jobs:
               "build": "undocs build ."
             },
             "devDependencies": {
-              "undocs": "latest"
+              "undocs": "^0.4.0",
+              "nuxi": "^3.21.0"
             }
           }
           EOF
@@ -187,7 +188,10 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: pnpm install
+        run: |
+          pnpm install
+          # Approve build scripts for native modules
+          echo "y" | pnpm approve-builds 2>/dev/null || true
 
       - name: Build Undocs site
         env:
