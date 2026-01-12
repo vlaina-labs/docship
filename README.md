@@ -37,6 +37,7 @@ jobs:
 | Eleventy | `eleventy.yml` | JavaScript, flexible templating |
 | Fumadocs | `fumadocs.yml` | Next.js-powered |
 | HonKit | `honkit.yml` | GitBook fork |
+| Hugo | `hugo-book.yml` | Go-powered, Book theme |
 | Jekyll | `jekyll-just-the-docs.yml` | Ruby ecosystem, Just the Docs theme |
 | mdBook | `mdbook.yml` | Rust-powered, lightweight |
 | MkDocs Material | `mkdocs-material.yml` | Python ecosystem, Material theme |

@@ -1,0 +1,243 @@
+name: Deploy Hugo to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-hugo"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: 'latest'
+          extended: true
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*|node_modules/|public/|themes/) ;;
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;;
+            esac
+          done
+
+      - name: Format markdown content
+        run: |
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh /tmp/user-content
+
+      - name: Setup Hugo project
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}/"
+          
+          # Clone hugo-book theme
+          git clone --depth 1 https://github.com/alex-shpak/hugo-book.git themes/hugo-book
+          
+          # Create hugo.yaml config
+          cat > hugo.yaml << CONFIGEOF
+          baseURL: "https://${OWNER}.github.io${BASE_PATH}"
+          title: "${OWNER}/${REPO_NAME}"
+          theme: hugo-book
+          
+          disablePathToLower: true
+          
+          markup:
+            goldmark:
+              renderer:
+                unsafe: true
+            tableOfContents:
+              startLevel: 1
+            highlight:
+              style: github
+          
+          menu:
+            after:
+              - name: "GitHub"
+                url: "${GITHUB_URL}"
+                weight: 10
+          
+          params:
+            BookTheme: "auto"
+            BookSection: "docs"
+            BookSearch: true
+            BookComments: false
+            BookLogo: "${AVATAR_URL}"
+          CONFIGEOF
+          
+          # Create content directories
+          mkdir -p content/docs
+          mkdir -p static
+          mkdir -p layouts/partials/docs/inject
+          
+          # Download avatar as favicon
+          curl -sL "${AVATAR_URL}" -o static/favicon.png || true
+          
+          # Create custom footer partial for attribution
+          cat > layouts/partials/docs/inject/footer.html << 'FOOTEREOF'
+          <div style="text-align: center; padding: 20px 0; font-size: 14px; color: var(--gray-500);">
+            Powered by <a href="https://github.com/NekoTick/NekoTick" target="_blank">NekoTick</a> · <a href="https://github.com/gohugoio/hugo" target="_blank">Hugo</a> + <a href="https://github.com/alex-shpak/hugo-book" target="_blank">Book</a>
+          </div>
+          FOOTEREOF
+
+      - name: Copy user content
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          
+          # Copy markdown files to content/docs
+          for f in /tmp/user-content/*.md; do
+            if [ -f "$f" ]; then
+              basename_file=$(basename "$f")
+              basename_noext=$(basename "$f" .md)
+              
+              # Determine target path
+              if [ "$basename_noext" = "index" ]; then
+                target="content/docs/_index.md"
+              else
+                target="content/docs/${basename_file}"
+              fi
+              
+              # Add frontmatter if not present
+              if ! head -1 "$f" | grep -q "^---"; then
+                title=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                if [ "$basename_noext" = "index" ]; then
+                  title="Introduction"
+                  printf '%s\n' '---' "title: ${title}" 'weight: 1' '---' '' > "$target"
+                else
+                  printf '%s\n' '---' "title: ${title}" '---' '' > "$target"
+                fi
+                cat "$f" >> "$target"
+              else
+                cp "$f" "$target"
+              fi
+            fi
+          done
+          
+          # Copy directories
+          for dir in /tmp/user-content/*/; do
+            if [ -d "$dir" ]; then
+              dirname=$(basename "$dir")
+              case "$dirname" in
+                node_modules|public|themes|content|static|layouts) ;;
+                *)
+                  mkdir -p "content/docs/${dirname}"
+                  
+                  # Create section index
+                  section_title=$(echo "$dirname" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                  printf '%s\n' '---' "title: ${section_title}" 'bookCollapseSection: true' '---' '' > "content/docs/${dirname}/_index.md"
+                  
+                  # Copy markdown files
+                  for f in "$dir"*.md; do
+                    if [ -f "$f" ]; then
+                      basename_file=$(basename "$f")
+                      basename_noext=$(basename "$f" .md)
+                      
+                      if [ "$basename_noext" = "index" ]; then
+                        target="content/docs/${dirname}/_index.md"
+                      else
+                        target="content/docs/${dirname}/${basename_file}"
+                      fi
+                      
+                      if ! head -1 "$f" | grep -q "^---"; then
+                        ftitle=$(echo "$basename_noext" | sed 's/-/ /g' | sed 's/\b\(.\)/\u\1/g')
+                        printf '%s\n' '---' "title: ${ftitle}" '---' '' > "$target"
+                        cat "$f" >> "$target"
+                      else
+                        cp "$f" "$target"
+                      fi
+                    fi
+                  done
+                  ;;
+              esac
+            fi
+          done
+          
+          # Create default docs index if none exists
+          if [ ! -f "content/docs/_index.md" ]; then
+            printf '%s\n' '---' 'title: Introduction' 'weight: 1' '---' '' "# Welcome" '' "Documentation for ${OWNER}/${REPO_NAME}." > "content/docs/_index.md"
+          fi
+          
+          # Create site root index
+          cat > content/_index.md << INDEXEOF
+          ---
+          title: ""
+          type: docs
+          ---
+          
+          # ${OWNER}/${REPO_NAME}
+          
+          Welcome to the documentation.
+          INDEXEOF
+
+      - name: Build Hugo site
+        run: hugo --minify
+
+      - name: Debug output
+        run: |
+          echo "=== Output structure ==="
+          find public -type f | head -50 || echo "No public directory"
+          echo "=== Content directory ==="
+          ls -la content/docs/ 2>/dev/null || true
+
+      - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-hugo
+          path: public/
+          retention-days: 1
+
+  deploy:
+    if: ${{ inputs.deploy != false }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

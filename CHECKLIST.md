@@ -409,6 +409,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | VuePress | `https://github.com/vuejs/vuepress` |
 | mdBook | `https://github.com/rust-lang/mdBook` |
 | Eleventy | `https://github.com/11ty/eleventy` |
+| Hugo | `https://github.com/gohugoio/hugo` |
 | Sphinx | `https://github.com/sphinx-doc/sphinx` |
 | Docus | `https://github.com/nuxt-content/docus` |
 
@@ -425,6 +426,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | VuePress | `themeConfig.logo` (external URL supported) |
 | Starlight | `logo.src` + `title` |
 | Docus | Custom `AppHeaderLogo.vue` with `<NuxtLink>` + `<UColorModeImage>` + `<span>` |
+| Hugo | `params.BookLogo` in hugo.yaml (external URL supported) |
 
 ### Sidebar Generation
 
@@ -488,6 +490,7 @@ Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
 | Eleventy | Custom layout template with footer |
 | Sphinx | Custom CSS in _static/custom.css |
 | Docus | `footer.credits` in app.config.ts |
+| Hugo | Custom partial `layouts/partials/docs/inject/footer.html` |
 | Jekyll | `footer_content` in _config.yml |
 
 ### 3. Update Showcase

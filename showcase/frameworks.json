@@ -23,6 +23,9 @@
   "honkit": {
     "links": ["https://github.com/honkit/honkit"]
   },
+  "hugo": {
+    "links": ["https://github.com/gohugoio/hugo", "https://github.com/alex-shpak/hugo-book"]
+  },
   "jekyll": {
     "links": ["https://github.com/jekyll/jekyll", "https://github.com/just-the-docs/just-the-docs"]
   },
