@@ -44,6 +44,7 @@ jobs:
 | Sphinx | `sphinx.yml` | Python ecosystem, Furo theme |
 | Rspress | `rspress.yml` | Rspack-powered |
 | Starlight | `starlight.yml` | Astro framework |
+| Undocs | `undocs.yml` | UnJS ecosystem, Nuxt-based |
 | VitePress | `vitepress.yml` | Vue-powered, fast |
 | VuePress | `vuepress.yml` | Vue 2 ecosystem |
 

@@ -176,6 +176,12 @@ Before releasing a theme, test with:
 | Homepage 404 (VuePress) | Using `index.md` instead of `README.md` | Rename `index.md` to `README.md` |
 | `sidebar: 'auto'` not showing files (VuePress) | VuePress auto only shows headings | Generate sidebar config via Node.js script |
 | Theme has ads/sponsors (VuePress) | Using `@vuepress/theme-vue` | Use default theme (built-in, no ads) |
+| `Prerendered 5 routes` only (Docus) | Nuxt can't crawl to doc pages | Add routes to `nitro.prerender.routes` |
+| 404 on `/docs/CHECKLIST` (Docus) | Uppercase filename in route | Convert routes to lowercase |
+| Blank page on root (Docus) | `index` file without `.html` | Create `index.html` redirect after build |
+| `@nuxtjs/mcp-toolkit not compatible` (Docus) | MCP needs server | Warning only, can ignore |
+| `robots.txt with base URL` error (Docus) | robots module conflict | Set `robots: { robotsTxt: false }` |
+| No sidebar on homepage (Docus) | `content/index.md` is landing page | Put docs in `content/1.docs/` subdirectory |
 
 ## Fumadocs Configuration
 
@@ -310,6 +316,61 @@ Before releasing a theme, test with:
 - [ ] Build with `sphinx-build -b html docs docs/_build/html`
 - [ ] License is BSD (Sphinx) + MIT (Furo) - very permissive
 
+## Docus Configuration
+
+- [ ] Docus is a Nuxt 4-based documentation framework (MIT license)
+- [ ] Install via `npm install docus nuxt better-sqlite3`
+- [ ] Config file is `nuxt.config.ts` with `extends: ['docus']`
+- [ ] Content goes in `content/` directory with number prefixes for ordering (e.g., `1.docs/`, `2.guide/`)
+- [ ] Output directory is `.output/public/`
+- [ ] Use `nuxt generate` for static build
+- [ ] **Homepage is special** - `content/index.md` renders as landing page without sidebar
+- [ ] **Documentation pages need subdirectory** - put docs in `content/1.docs/` to get sidebar layout
+- [ ] Number prefixes in filenames control order: `1.index.md`, `2.guide.md` → `/index`, `/guide`
+- [ ] Use `.navigation.yml` in directories to set section titles
+- [ ] Frontmatter `title` is required for each page
+- [ ] `app.config.ts` goes in `app/` directory for theme configuration
+- [ ] `header.title` and `header.logo` for branding
+- [ ] `socials.github` for GitHub link in header
+- [ ] Custom components override defaults - put in `app/components/app/`
+- [ ] `AppHeaderLogo.vue` - customize logo + title display
+- [ ] `AppFooterLeft.vue` - customize footer left (attribution)
+- [ ] `AppFooterRight.vue` - customize footer right (social icons, theme toggle)
+- [ ] Set empty `AppFooterRight.vue` to remove duplicate theme toggle
+- [ ] Logo click should link to `/docs` not `/` (override `AppHeaderLogo.vue` with `<NuxtLink to="/docs">`)
+- [ ] Favicon via `app.head.link` in `nuxt.config.ts`
+- [ ] **Prerendering issue**: Nuxt only prerenders routes it can crawl from homepage
+- [ ] Must explicitly list routes in `nitro.prerender.routes` or generate dynamically
+- [ ] Convert filenames to lowercase for routes (uppercase causes 404)
+- [ ] Create `index.html` redirect after build for root → `/docs`
+- [ ] `robots: { robotsTxt: false }` to avoid base URL error
+- [ ] `@nuxtjs/mcp-toolkit` warning is normal - not compatible with static generate
+
+## Undocs Configuration
+
+- [ ] Undocs is a UnJS documentation CLI tool based on Nuxt (MIT license)
+- [ ] Install via `pnpm add -D undocs` (requires pnpm)
+- [ ] Build command is `undocs build` (not `nuxt generate`)
+- [ ] Config file is `.config/docs.yaml` (YAML format)
+- [ ] Content goes in root directory with number prefixes (e.g., `1.guide/`, `2.config/`)
+- [ ] Output directory is `.output/public/`
+- [ ] **Required config fields**: `name`, `github`, `url` (url required for production)
+- [ ] `shortDescription` and `description` for SEO
+- [ ] `themeColor` for primary color (e.g., 'amber', 'blue')
+- [ ] Custom assets go in `.docs/public/` directory
+- [ ] Logo is set via `.docs/public/icon.svg`
+- [ ] Favicon is set via `.docs/public/favicon.ico`
+- [ ] Number prefixes control navigation order: `1.guide/` appears before `2.config/`
+- [ ] File naming: `1.index.md`, `2.getting-started.md` → `/guide`, `/guide/getting-started`
+- [ ] Frontmatter `title` is recommended for each page
+- [ ] GitHub link automatically added from `github` config
+- [ ] Landing page features via `landing.features` array in config
+- [ ] Hero code block via `landing.heroCode` config
+- [ ] Redirects via `redirects` config object
+- [ ] Custom icons go in `.docs/icons/` directory (prefix: `custom`)
+- [ ] Base URL set via `NUXT_APP_BASE_URL` environment variable
+- [ ] Footer attribution requires post-build HTML injection (no built-in config)
+
 ## General Lessons Learned
 
 ### Framework Categories
@@ -375,6 +436,7 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | Eleventy | `https://github.com/11ty/eleventy` |
 | Sphinx | `https://github.com/sphinx-doc/sphinx` |
 | Docus | `https://github.com/nuxt-content/docus` |
+| Undocs | `https://github.com/unjs/undocs` |
 
 ### Logo Implementation Patterns
 
@@ -388,6 +450,8 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | DocFX | Custom template JS to replace `#logo` element |
 | VuePress | `themeConfig.logo` (external URL supported) |
 | Starlight | `logo.src` + `title` |
+| Docus | Custom `AppHeaderLogo.vue` with `<NuxtLink>` + `<UColorModeImage>` + `<span>` |
+| Undocs | `appConfig.docs.logo` + `appConfig.site.name` (via `.config/docs.yaml`) |
 
 ### Sidebar Generation
 
@@ -451,6 +515,7 @@ Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
 | Eleventy | Custom layout template with footer |
 | Sphinx | Custom CSS in _static/custom.css |
 | Docus | `footer.credits` in app.config.ts |
+| Undocs | Post-build HTML injection (sed) |
 | Jekyll | `footer_content` in _config.yml |
 
 ### 3. Update Showcase
