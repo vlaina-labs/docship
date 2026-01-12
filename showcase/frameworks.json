@@ -38,9 +38,6 @@
   "sphinx": {
     "links": ["https://github.com/sphinx-doc/sphinx", "https://github.com/pradyunsg/furo"]
   },
-  "undocs": {
-    "links": ["https://github.com/unjs/undocs"]
-  },
   "rspress": {
     "links": ["https://github.com/web-infra-dev/rspress"]
   },

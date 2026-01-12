@@ -346,31 +346,6 @@ Before releasing a theme, test with:
 - [ ] `robots: { robotsTxt: false }` to avoid base URL error
 - [ ] `@nuxtjs/mcp-toolkit` warning is normal - not compatible with static generate
 
-## Undocs Configuration
-
-- [ ] Undocs is a UnJS documentation CLI tool based on Nuxt (MIT license)
-- [ ] Install via `pnpm add -D undocs` (requires pnpm)
-- [ ] Build command is `undocs build` (not `nuxt generate`)
-- [ ] Config file is `.config/docs.yaml` (YAML format)
-- [ ] Content goes in root directory with number prefixes (e.g., `1.guide/`, `2.config/`)
-- [ ] Output directory is `.output/public/`
-- [ ] **Required config fields**: `name`, `github`, `url` (url required for production)
-- [ ] `shortDescription` and `description` for SEO
-- [ ] `themeColor` for primary color (e.g., 'amber', 'blue')
-- [ ] Custom assets go in `.docs/public/` directory
-- [ ] Logo is set via `.docs/public/icon.svg`
-- [ ] Favicon is set via `.docs/public/favicon.ico`
-- [ ] Number prefixes control navigation order: `1.guide/` appears before `2.config/`
-- [ ] File naming: `1.index.md`, `2.getting-started.md` → `/guide`, `/guide/getting-started`
-- [ ] Frontmatter `title` is recommended for each page
-- [ ] GitHub link automatically added from `github` config
-- [ ] Landing page features via `landing.features` array in config
-- [ ] Hero code block via `landing.heroCode` config
-- [ ] Redirects via `redirects` config object
-- [ ] Custom icons go in `.docs/icons/` directory (prefix: `custom`)
-- [ ] Base URL set via `NUXT_APP_BASE_URL` environment variable
-- [ ] Footer attribution requires post-build HTML injection (no built-in config)
-
 ## General Lessons Learned
 
 ### Framework Categories
@@ -436,7 +411,6 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | Eleventy | `https://github.com/11ty/eleventy` |
 | Sphinx | `https://github.com/sphinx-doc/sphinx` |
 | Docus | `https://github.com/nuxt-content/docus` |
-| Undocs | `https://github.com/unjs/undocs` |
 
 ### Logo Implementation Patterns
 
@@ -451,7 +425,6 @@ All workflows must include a footer with attribution: `Powered by NekoTick · {F
 | VuePress | `themeConfig.logo` (external URL supported) |
 | Starlight | `logo.src` + `title` |
 | Docus | Custom `AppHeaderLogo.vue` with `<NuxtLink>` + `<UColorModeImage>` + `<span>` |
-| Undocs | `appConfig.docs.logo` + `appConfig.site.name` (via `.config/docs.yaml`) |
 
 ### Sidebar Generation
 
@@ -515,7 +488,6 @@ Every framework MUST include a footer with: `Powered by NekoTick · {Framework}`
 | Eleventy | Custom layout template with footer |
 | Sphinx | Custom CSS in _static/custom.css |
 | Docus | `footer.credits` in app.config.ts |
-| Undocs | Post-build HTML injection (sed) |
 | Jekyll | `footer_content` in _config.yml |
 
 ### 3. Update Showcase
