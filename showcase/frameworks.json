@@ -41,6 +41,9 @@
   "rspress": {
     "links": ["https://github.com/web-infra-dev/rspress"]
   },
+  "saber": {
+    "links": ["https://github.com/saberland/saber"]
+  },
   "starlight": {
     "links": ["https://github.com/withastro/starlight"]
   },

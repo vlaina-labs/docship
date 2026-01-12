@@ -141,6 +141,13 @@ jobs:
       base_path_suffix: docus
       deploy: false
 
+  build-saber:
+    name: saber
+    uses: ./.github/workflows/saber.yml
+    with:
+      base_path_suffix: saber
+      deploy: false
+
   # Combine all build artifacts and create showcase page
   combine:
     if: always()
@@ -162,6 +169,7 @@ jobs:
       - build-eleventy
       - build-sphinx
       - build-docus
+      - build-saber
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -196,6 +204,7 @@ jobs:
           BUILD_ELEVENTY: ${{ needs.build-eleventy.result }}
           BUILD_SPHINX: ${{ needs.build-sphinx.result }}
           BUILD_DOCUS: ${{ needs.build-docus.result }}
+          BUILD_SABER: ${{ needs.build-saber.result }}
         run: |
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
@@ -213,6 +222,7 @@ jobs:
           RESULTS[docute]="$BUILD_DOCUTE"
           RESULTS[docfx]="$BUILD_DOCFX"
           RESULTS[docus]="$BUILD_DOCUS"
+          RESULTS[saber]="$BUILD_SABER"
           RESULTS[eleventy]="$BUILD_ELEVENTY"
           RESULTS[fumadocs]="$BUILD_FUMADOCS"
           RESULTS[honkit]="$BUILD_HONKIT"

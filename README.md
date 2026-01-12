@@ -43,6 +43,7 @@ jobs:
 | Nextra | `nextra.yml` | Next.js-powered |
 | Sphinx | `sphinx.yml` | Python ecosystem, Furo theme |
 | Rspress | `rspress.yml` | Rspack-powered |
+| Saber | `saber.yml` | Vue 2 + Webpack, static site generator |
 | Starlight | `starlight.yml` | Astro framework |
 | VitePress | `vitepress.yml` | Vue-powered, fast |
 | VuePress | `vuepress.yml` | Vue 2 ecosystem |
