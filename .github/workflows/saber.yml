@@ -79,8 +79,7 @@ jobs:
               "build": "saber build"
             },
             "dependencies": {
-              "saber": "^0.11.7",
-              "saber-plugin-prismjs": "^0.1.1"
+              "saber": "^0.11.7"
             }
           }
           EOF
@@ -102,9 +101,7 @@ jobs:
                 permalink: true
               }
             },
-            plugins: [
-              { resolve: 'saber-plugin-prismjs' }
-            ],
+            plugins: [],
             themeConfig: {
               nav: [
                 { text: 'Home', link: '/' },
