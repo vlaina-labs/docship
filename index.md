@@ -35,11 +35,6 @@ docsify, docusaurus, docute, docfx, eleventy, fumadocs, honkit, jekyll, mdbook, 
 2. **Slate** - Apache-2.0，API 文档三栏布局，很多公司用
 3. **Lume** - MIT，Deno 生态，轻量快速
 
----
+GitHub Pages 是仓库级别的设置，不是账户级别的。所以用户每新建一个想用 Docship 部署文档的仓库，都需要去那个仓库的 Settings 里点一下，把部署源改成 GitHub Actions。
 
-**不推荐的：**
-- Saber、Gridsome - 项目不太活跃了
-- Markdoc - 需要太多配置
-- Pagic - 太小众
-
-你对哪个感兴趣？**Docus** 或 **Slate** 我觉得比较值得做。
+这个没办法绕过，因为 GitHub 不允许 workflow 自动帮用户首次启用 Pages 功能，这是出于安全考虑。
