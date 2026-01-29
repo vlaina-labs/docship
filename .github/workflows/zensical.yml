@@ -166,6 +166,11 @@ jobs:
       - name: Build
         run: zensical build
 
+      - name: Debug Output
+        run: |
+          echo "Listing site directory:"
+          ls -R site/ || echo "site/ directory not found"
+
       - name: Setup Pages
         if: ${{ inputs.deploy != false }}
         uses: actions/configure-pages@v4
