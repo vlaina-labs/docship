@@ -48,7 +48,17 @@ jobs:
 
       - name: Install Zensical
         run: |
-          pip install git+https://github.com/zensical/zensical.git
+          # Clone Zensical repo
+          git clone https://github.com/zensical/zensical.git _zensical_build
+          cd _zensical_build
+          
+          # Prepare UI assets (templates)
+          python scripts/prepare.py
+          
+          # Install Zensical
+          pip install .
+          cd ..
+          rm -rf _zensical_build
 
       - name: Backup user content
         run: |
