@@ -1,0 +1,187 @@
+name: Deploy Zensical to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      base_path_suffix:
+        description: 'Additional path suffix for base URL (used by showcase)'
+        required: false
+        default: ''
+        type: string
+      deploy:
+        description: 'Whether to deploy to GitHub Pages'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-zensical"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-zensical
+          restore-keys: |
+            ${{ runner.os }}-zensical
+
+      - name: Install Zensical
+        run: |
+          pip install git+https://github.com/zensical/zensical.git
+
+      - name: Backup user content
+        run: |
+          mkdir -p /tmp/user-content
+          find . -maxdepth 1 -name "*.md" ! -name "README.md" -exec cp {} /tmp/user-content/ \; 2>/dev/null || true
+          for dir in */; do
+            case "$dir" in
+              .*) ;; 
+              node_modules|site|venv) ;; 
+              *) cp -r "$dir" /tmp/user-content/ 2>/dev/null || true ;; 
+            esac
+          done
+
+      - name: Format markdown content
+        run: |
+          curl -sL "https://raw.githubusercontent.com/NekoTick/docship/main/scripts/format.sh?$(date +%s)" -o /tmp/format.sh
+          chmod +x /tmp/format.sh
+          /tmp/format.sh /tmp/user-content
+
+      - name: Setup Zensical project
+        env:
+          BASE_SUFFIX: ${{ inputs.base_path_suffix }}
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          AVATAR_URL="https://github.com/${OWNER}.png"
+          GITHUB_URL="https://github.com/${OWNER}/${REPO_NAME}"
+          BASE_PATH="/${REPO_NAME}${BASE_SUFFIX:+/$BASE_SUFFIX}/"
+          
+          # Initialize new project structure
+          zensical new .
+          
+          # Clean up default docs content
+          rm -rf docs/*
+          
+          # Copy user content
+          if [ -d "/tmp/user-content" ]; then
+             cp -r /tmp/user-content/* docs/ 2>/dev/null || true
+          fi
+          
+          # Handle Homepage (index.md / README.md) logic
+          if [ ! -f "docs/index.md" ]; then
+            if [ -f "docs/README.md" ]; then
+              mv docs/README.md docs/index.md
+            else
+              FIRST_DOC=$(find docs -name "*.md" -type f | sort | head -1)
+              if [ -n "$FIRST_DOC" ]; then
+                cp "$FIRST_DOC" docs/index.md
+              else
+                 printf '%s\n' '# Welcome' '' 'Add your markdown files to get started.' > docs/index.md
+              fi
+            fi
+          fi
+          
+          # Create assets directory
+          mkdir -p docs/assets
+          
+          # Download branding assets
+          curl -sL "${AVATAR_URL}" -o docs/assets/favicon.png || true
+          curl -sL "${AVATAR_URL}" -o docs/assets/logo.png || true
+
+          # Generate zensical.toml
+          cat > zensical.toml << TOML
+          [project]
+          site_name = "${OWNER}/${REPO_NAME}"
+          site_description = "Documentation for ${OWNER}/${REPO_NAME}"
+          site_url = "https://${OWNER}.github.io${BASE_PATH}"
+          site_author = "${OWNER}"
+          repo_url = "${GITHUB_URL}"
+          repo_name = "${OWNER}/${REPO_NAME}"
+          
+          # Footer attribution
+          copyright = "Powered by <a href='https://github.com/NekoTick/NekoTick' target='_blank'>NekoTick</a> · <a href='https://github.com/zensical/zensical' target='_blank'>Zensical</a>"
+
+          [project.theme]
+          favicon = "assets/favicon.png"
+          logo = "assets/logo.png"
+          
+          features = [
+            "navigation.instant",
+            "navigation.tracking",
+            "navigation.sections",
+            "navigation.expand",
+            "content.code.copy",
+            "content.code.annotate"
+          ]
+          
+          [[project.theme.palette]]
+          scheme = "default"
+          primary = "indigo"
+          accent = "indigo"
+          [[project.theme.palette.toggle]]
+          icon = "material/brightness-7"
+          name = "Switch to dark mode"
+
+          [[project.theme.palette]]
+          scheme = "slate"
+          primary = "indigo"
+          accent = "indigo"
+          [[project.theme.palette.toggle]]
+          icon = "material/brightness-4"
+          name = "Switch to light mode"
+          TOML
+
+      - name: Build
+        run: zensical build
+
+      - name: Setup Pages
+        if: ${{ inputs.deploy != false }}
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.deploy != false }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Upload build artifact (for showcase)
+        if: ${{ inputs.deploy == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-zensical
+          path: site/
+          retention-days: 1
+
+  deploy:
+    if: ${{ inputs.deploy != false }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

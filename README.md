@@ -47,6 +47,7 @@ jobs:
 | Starlight | `starlight.yml` | Astro framework |
 | VitePress | `vitepress.yml` | Vue-powered, fast |
 | VuePress | `vuepress.yml` | Vue 2 ecosystem |
+| Zensical | `zensical.yml` | Rust-powered, MkDocs compatible |
 
 ## Examples
 
@@ -69,6 +70,13 @@ jobs:
 jobs:
   deploy:
     uses: NekoTick/docship/.github/workflows/docsify.yml@main
+```
+
+### Zensical
+```yaml
+jobs:
+  deploy:
+    uses: NekoTick/docship/.github/workflows/zensical.yml@main
 ```
 
 <img width="342" height="116" alt="image" src="https://github.com/user-attachments/assets/11c19407-73af-4375-95d0-c561924388b2" />

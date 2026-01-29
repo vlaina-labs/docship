@@ -148,6 +148,13 @@ jobs:
       base_path_suffix: hugo
       deploy: false
 
+  build-zensical:
+    name: zensical
+    uses: ./.github/workflows/zensical.yml
+    with:
+      base_path_suffix: zensical
+      deploy: false
+
   # Combine all build artifacts and create showcase page
   combine:
     if: always()
@@ -170,6 +177,7 @@ jobs:
       - build-sphinx
       - build-docus
       - build-hugo
+      - build-zensical
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -205,6 +213,7 @@ jobs:
           BUILD_SPHINX: ${{ needs.build-sphinx.result }}
           BUILD_DOCUS: ${{ needs.build-docus.result }}
           BUILD_HUGO: ${{ needs.build-hugo.result }}
+          BUILD_ZENSICAL: ${{ needs.build-zensical.result }}
         run: |
           OWNER="${{ github.repository_owner }}"
           AVATAR="https://github.com/${OWNER}.png"
@@ -235,6 +244,7 @@ jobs:
           RESULTS[starlight]="$BUILD_STARLIGHT"
           RESULTS[vitepress]="$BUILD_VITEPRESS"
           RESULTS[vuepress]="$BUILD_VUEPRESS"
+          RESULTS[zensical]="$BUILD_ZENSICAL"
           
           # Collect successful build artifacts
           for d in artifacts/build-*/; do
