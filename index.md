@@ -1,183 +1,191 @@
-# Markdown Comprehensive Test Suite
+# Markdown 语法展示
 
-## 1. Headings (标题)
+这是一篇用于 Docship 预览的综合 Markdown 文档。它同时覆盖 CommonMark、GitHub Flavored Markdown（GFM）以及常见文档站扩展，方便在 showcase 中比较不同框架的渲染结果。
 
-# H1 Heading
-## H2 Heading
-### H3 Heading
-#### H4 Heading
-##### H5 Heading
-###### H6 Heading
+## 目录
 
-## 2. Text Formatting (文本格式)
+- [标题与段落](#标题与段落)
+- [文字格式](#文字格式)
+- [列表](#列表)
+- [链接与图片](#链接与图片)
+- [引用](#引用)
+- [代码](#代码)
+- [表格](#表格)
+- [扩展语法](#扩展语法)
+- [原始 HTML](#原始-html)
 
-**Bold Text (粗体)**
-*Italic Text (斜体)*
-***Bold and Italic (粗斜体)***
-~~Strikethrough (删除线)~~
-`Inline Code (行内代码)`
-<u>Underline (下划线 - HTML)</u>
-==Highlight (高亮 - Extended)==
-Subscript: H~2~O (下标)
-Superscript: X^2^ (上标)
-Keyboard keys: <kbd>Ctrl</kbd> + <kbd>C</kbd>
+## 标题与段落
 
-## 3. Lists (列表)
+上面是一级标题。下面演示 Setext 风格标题。
 
-### Unordered List
-- Item 1
-- Item 2
-  - Sub-item 2.1
-  - Sub-item 2.2
-    - Sub-sub-item 2.2.1
-- Item 3
+Setext 二级标题
+--------------
 
-### Ordered List
-1. First item
-2. Second item
-   1. Sub-item 2.1
-   2. Sub-item 2.2
-3. Third item
+Setext 一级标题
+==============
 
-### Task List (GFM)
-- [ ] Incomplete task
-- [x] Completed task
-- [ ] Another incomplete task
+这是一个普通段落。Markdown 中连续的文本会合并为同一段，空一行即可开始新段落。
+行末两个空格会产生换行。<br>
+这行会出现在上一行的下面。
 
-### Definition List (Extended)
-Term 1
-: Definition 1
+## 文字格式
 
-Term 2
-: Definition 2
-: Definition 2 (alternate)
+- *斜体*、_斜体_
+- **粗体**、__粗体__
+- ***粗斜体***、___粗斜体___
+- ~~删除线~~（GFM）
+- `行内代码` 和 ``包含 ` 反引号的代码``
+- 普通链接中的 [链接文字](https://example.com "链接标题")
+- 转义符号：\*星号\*、\#井号、\[方括号\]
+- 特殊字符：&lt;、&gt;、&amp; 会被正确显示
 
-## 4. Links and Images (链接与图片)
+## 列表
 
-[OpenAI Website](https://www.openai.com "Optional Title")
-[Relative Link](./other-file.md)
-Autolink: https://www.google.com
+### 无序列表
 
-![Image Alt Text](https://placehold.co/600x400 "Image Title")
+- 第一项
+- 第二项
+  - 嵌套项 2.1
+  - 嵌套项 2.2
+    - 第三级项目
+- 第三项
 
-## 5. Blockquotes (引用)
+### 有序列表
 
-> This is a blockquote.
-> It can span multiple lines.
-> 
-> > Nested blockquote level 2.
-> > > Nested blockquote level 3.
+1. 第一步
+2. 第二步
+   1. 第二步的子项
+   2. 另一个子项
+3. 第三步
 
-## 6. Code Blocks (代码块)
+### 任务列表
 
-### JavaScript
+- [x] 已完成任务
+- [ ] 待完成任务
+- [ ] 另一个待办事项
+
+### 定义列表
+
+Markdown
+: 一种轻量级标记语言
+
+GFM
+: GitHub Flavored Markdown
+
+## 链接与图片
+
+### 链接
+
+[行内链接](https://github.com/NekoTick/docship)
+
+[带标题的链接](https://github.com/NekoTick/docship "Docship 源码")
+
+<https://github.com/NekoTick/docship>
+
+<hello@example.com>
+
+也可以使用引用式链接：[项目主页][docship-home]。
+
+[docship-home]: https://github.com/NekoTick/docship "Docship"
+
+### 图片
+
+![Markdown logo](https://upload.wikimedia.org/wikipedia/commons/4/48/Markdown-mark.svg "Markdown")
+
+图片也可以作为链接：
+
+[![Docship](https://github.com/NekoTick.png "Docship")](https://github.com/NekoTick/docship)
+
+## 引用
+
+> 这是一个引用段落。
+>
+> 引用可以包含 **粗体**、`代码` 以及链接。
+>
+> > 这是嵌套引用。
+> >
+> > 嵌套引用可以继续包含列表：
+> >
+> > - 项目 A
+> > - 项目 B
+
+## 代码
+
+### 行内代码
+
+使用 `npm run build` 构建项目。
+
+### 围栏代码块
+
 ```javascript
 function greet(name) {
-  console.log(`Hello, ${name}!`);
-  return true;
+  return `Hello, ${name}!`;
 }
-greet('World');
+
+console.log(greet('Markdown'));
 ```
 
-### Python
 ```python
 def fibonacci(n):
-    if n <= 1:
+    if n < 2:
         return n
-    else:
-        return fibonacci(n-1) + fibonacci(n-2)
+    return fibonacci(n - 1) + fibonacci(n - 2)
 ```
 
-### Rust
-```rust
-fn main() {
-    println!("Hello, world!");
+```json
+{
+  "name": "docship",
+  "markdown": true
 }
 ```
 
-### Diff (Syntax Highlighting)
 ```diff
-- const oldVal = 1;
-+ const newVal = 2;
+- const theme = 'light';
++ const theme = 'dark';
 ```
 
-## 7. Tables (表格)
+### 缩进代码块
 
-| Left Aligned | Center Aligned | Right Aligned |
-| :--- | :---: | ---: |
-| Cell 1 | Cell 2 | Cell 3 |
-| Content | More Content | $100 |
+    // 四个空格也可以创建代码块
+    const answer = 42;
 
-## 8. Math / LaTeX (数学公式)
+## 表格
 
-Inline Math: $E = mc^2$
+### 对齐与格式
 
-Block Math:
-$$
-\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}
-$$
+| 左对齐 | 居中对齐 | 右对齐 | 包含 Markdown |
+| :--- | :---: | ---: | :--- |
+| 文本 | 文本 | 100 | **粗体** |
+| `代码` | [链接](https://example.com) | 99.5 | ~~删除线~~ |
+| 长内容可以正常换行 | 第二列 | 0 | `a\|b` 中的竖线已转义 |
 
-Matrix:
-$$
-\begin{pmatrix}
-a & b \\
-c & d
-\end{pmatrix}
-$$
+### 项目比较表
 
-## 9. Diagrams (Mermaid)
+| 特性 | CommonMark | GFM | Docship 预览 |
+| :--- | :---: | :---: | :---: |
+| 标题、段落 | 支持 | 支持 | 支持 |
+| 任务列表 | - | 支持 | 支持 |
+| 表格 | - | 支持 | 支持 |
+| 脚注 | 扩展 | 支持 | 按框架能力渲染 |
+| 数学公式 | 扩展 | 扩展 | 见下方示例 |
 
-### Flowchart
-```mermaid
-graph TD;
-    A[Start] --> B{Is it working?};
-    B -- Yes --> C[Great!];
-    B -- No --> D[Debug];
-    D --> B;
-```
+### HTML 表格
 
-### Sequence Diagram
-```mermaid
-sequenceDiagram
-    participant Alice
-    participant Bob
-    Alice->>Bob: Hello Bob, how are you?
-    Bob-->>Alice: I am good thanks!
-```
+<table>
+  <thead>
+    <tr><th>状态</th><th>含义</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>通过</td><td>语法已渲染</td></tr>
+    <tr><td>扩展</td><td>由框架插件提供</td></tr>
+  </tbody>
+</table>
 
-## 10. Extended Syntax / Notion-like Features
+## 扩展语法
 
-### Footnotes
-Here is a simple footnote[^1].
-A footnote can also have multiple lines[^2].
+### 分隔线
 
-[^1]: This is the first footnote.
-[^2]: This is the second footnote.
-    It has multiple lines.
-
-### Admonitions / Callouts (Common Extension)
-
-> [!NOTE]
-> This is a note callout.
-
-> [!TIP]
-> Pro tip: Use callouts to highlight information.
-
-> [!WARNING]
-> Warning: Proceed with caution.
-
-> [!DANGER]
-> Danger: Do not touch!
-
-### Details / Summary (Collapsible)
-<details>
-<summary>Click to expand</summary>
-
-Here is the hidden content inside the details tag.
-It supports **markdown** inside.
-</details>
-
-## 11. Horizontal Rules (分割线)
+三种写法都表示水平分隔线：
 
 ---
 
@@ -185,13 +193,95 @@ It supports **markdown** inside.
 
 ___
 
-## 12. Miscellaneous
+### 脚注
 
-### Escaping Characters
-*Literal Asterisks*
-# Literal Hashtag
+这里有一个脚注[^first]，还有一个多行脚注[^second]。
 
-### HTML Tags (If supported)
-<div style="background-color: #f0f0f0; padding: 10px; border-radius: 5px;">
-  This is a raw HTML div with inline styles.
+[^first]: 脚注可以放在文档末尾。
+[^second]: 脚注内容可以分成多行。
+    缩进的行仍属于同一个脚注。
+
+### 数学公式（LaTeX）
+
+行内公式通常写作 $E = mc^2$。
+
+部分框架需要 KaTeX 或 MathJax 插件才能显示块级公式：
+
+```math
+\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}
+```
+
+### Mermaid 图表
+
+部分框架支持直接渲染 Mermaid：
+
+```mermaid
+flowchart TD
+    A[开始] --> B{构建成功?}
+    B -->|是| C[发布页面]
+    B -->|否| D[查看日志]
+```
+
+### 可折叠内容
+
+<details>
+<summary>点击展开更多内容</summary>
+
+这里是默认折叠的内容，里面仍然可以使用 **Markdown**。
+
+- 隐藏项目一
+- 隐藏项目二
+
+</details>
+
+### 提示块（部分框架支持）
+
+> [!NOTE]
+> 这是一个提示块。
+
+> [!TIP]
+> 这是一个技巧提示。
+
+> [!WARNING]
+> 这是一个警告提示。
+
+> [!IMPORTANT]
+> 这是一个重要提示。
+
+> [!CAUTION]
+> 这是一个注意事项。
+
+### YAML Front Matter
+
+Front Matter 通常位于文件开头。这里用代码块展示，避免影响当前页面配置：
+
+```yaml
+---
+title: Markdown 示例
+description: 展示常用 Markdown 语法
+---
+```
+
+## 原始 HTML
+
+Markdown 允许在需要时混入安全的 HTML 标签：
+
+<kbd>Ctrl</kbd> + <kbd>C</kbd> 复制
+
+H<sub>2</sub>O 和 x<sup>2</sup>
+
+<mark>高亮文本</mark>
+
+<!-- 这是不会显示的 HTML 注释 -->
+
+<div>
+  <strong>HTML 容器</strong> 里的内容也可以和 Markdown 共存。
 </div>
+
+## 兼容性说明
+
+Docship 会把根目录的 Markdown 文件交给各个框架工作流构建。当前页面就是仓库首页，因此会自动出现在 showcase 的每个框架卡片中；不同框架对数学、Mermaid、提示块和 HTML 扩展的支持可能略有差异。
+
+---
+
+*文档由 Docship Markdown showcase 提供。*
